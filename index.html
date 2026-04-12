@@ -133,6 +133,9 @@ main { max-width: 960px; margin: 0 auto; padding: 36px 28px 80px; }
 .team-label { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
 .team-pip { width: 9px; height: 9px; border-radius: 50%; }
 .team-big-name { font-family: 'Barlow Condensed', sans-serif; font-size: 24px; font-weight: 900; text-transform: uppercase; }
+.roster-list { margin-top: 14px; display: flex; flex-direction: column; gap: 4px; }
+.roster-player { font-size: 13px; color: var(--muted); padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.03); }
+.roster-player .player-num { font-size: 11px; }
 .info-note { margin-top: 20px; padding: 14px 18px; background: rgba(232,184,75,0.05); border: 1px solid rgba(232,184,75,0.15); border-radius: 8px; font-size: 12px; color: var(--muted); display: flex; align-items: flex-start; gap: 10px; line-height: 1.6; }
 .info-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: 5px; animation: blink 2s ease-in-out infinite; }
 footer { border-top: 1px solid var(--border); padding: 28px; text-align: center; font-size: 12px; color: var(--muted); letter-spacing: 1px; }
@@ -152,7 +155,7 @@ footer strong { color: var(--accent); }
       <div class="hero-actions">
         <div class="live-badge"><span class="live-dot"></span>Live Stats</div>
         <button id="refreshBtn" onclick="refreshData()">
-          <span class="spin-icon">↻</span> Refresh Stats
+          <span class="spin-icon">&#8635;</span> Refresh Stats
         </button>
         <span id="lastUpdated"></span>
       </div>
@@ -181,7 +184,7 @@ footer strong { color: var(--accent); }
     <div id="scores-container"><div class="loading-state"><div class="spinner"></div>Loading...</div></div>
   </div>
   <div id="tab-stats" class="tab-panel">
-    <div class="section-header"><h2>Player Stats</h2><p>Season totals — click any column to sort</p></div>
+    <div class="section-header"><h2>Player Stats</h2><p>Season totals &mdash; click any column to sort</p></div>
     <div class="filter-row">
       <button class="filter-btn active" data-filter="all">All Players</button>
       <button class="filter-btn" data-filter="Valley Vipers">Valley Vipers</button>
@@ -192,32 +195,15 @@ footer strong { color: var(--accent); }
     <div id="stats-container"><div class="loading-state"><div class="spinner"></div>Loading...</div></div>
   </div>
   <div id="tab-schedule" class="tab-panel">
-    <div class="section-header"><h2>Season Schedule</h2><p>Every Saturday — Goose Bay, NL</p></div>
+    <div class="section-header"><h2>Season Schedule</h2><p>Every Saturday &mdash; Goose Bay, NL</p></div>
     <div id="schedule-container"><div class="loading-state"><div class="spinner"></div>Loading...</div></div>
   </div>
   <div id="tab-teams" class="tab-panel">
     <div class="section-header"><h2>The Teams</h2><p>Four squads, one city</p></div>
-    <div class="teams-grid">
-      <div class="team-card" style="border-top-color:#aaa;">
-        <div class="team-label"><span class="team-pip" style="background:#aaa;"></span>Black</div>
-        <div class="team-big-name" style="color:#c8c8c8;">Valley Vipers</div>
-      </div>
-      <div class="team-card" style="border-top-color:#b91c1c;">
-        <div class="team-label"><span class="team-pip" style="background:#b91c1c;"></span>Red</div>
-        <div class="team-big-name" style="color:#fca5a5;">Hognation</div>
-      </div>
-      <div class="team-card" style="border-top-color:#1d4ed8;">
-        <div class="team-label"><span class="team-pip" style="background:#1d4ed8;"></span>Blue</div>
-        <div class="team-big-name" style="color:#93c5fd;">Fili Hustlers</div>
-      </div>
-      <div class="team-card" style="border-top-color:#ca8a04;">
-        <div class="team-label"><span class="team-pip" style="background:#ca8a04;"></span>Yellow</div>
-        <div class="team-big-name" style="color:#fde047;">Torngat</div>
-      </div>
-    </div>
+    <div id="teams-container"><div class="loading-state"><div class="spinner"></div>Loading...</div></div>
     <div class="info-note" style="margin-top:24px;">
       <div class="info-dot"></div>
-      <span>When your brother adds a new week tab named <strong style="color:var(--accent)">"GBB Week..."</strong> to Google Sheets, hit Refresh Stats — the site auto-discovers and loads it. No code changes ever needed.</span>
+      <span>When a new week tab named <strong style="color:var(--accent)">"GBB Week..."</strong> is added to Google Sheets, hit Refresh Stats &mdash; the site auto-discovers and loads it. No code changes ever needed.</span>
     </div>
   </div>
 </main>
@@ -226,11 +212,9 @@ footer strong { color: var(--accent); }
 <div id="toast"></div>
 
 <script>
-// ─────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
 // CONFIG
-// ─────────────────────────────────────────────────────────────────
-
-// Published base URL (used as direct fallback if API is down)
+// ═══════════════════════════════════════════════════════════════
 const PUB_BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQxnfq6e_VLNn2t8SKm2CE8H-EIzLhstfs2fTPpcPZGkgMAc_5LvE2rV4R7hN5BybR42KvAu91o3Zx8';
 
 const TEAMS = {
@@ -240,17 +224,27 @@ const TEAMS = {
   'Torngat':       { color: '#fde047', dot: '#ca8a04' },
 };
 
-// ─────────────────────────────────────────────────────────────────
+// Canonical team name lookup (lowercase → proper case)
+const TEAM_CANONICAL = {
+  'valley vipers': 'Valley Vipers',
+  'hognation':     'Hognation',
+  'fili hustlers': 'Fili Hustlers',
+  'torngat':       'Torngat',
+};
+
+// ═══════════════════════════════════════════════════════════════
 // STATE
-// ─────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
 let weeksData = [];
 let usingLive = false;
 let sortCol = 'pts', sortAsc = false, activeFilter = 'all';
 
-// ─────────────────────────────────────────────────────────────────
-// CSV PARSING
-// ─────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+// CSV PARSING — FIX: strip \r before parsing
+// ═══════════════════════════════════════════════════════════════
 function parseCSV(txt) {
+  // Strip all \r characters FIRST — Google Sheets CSV uses \r\n
+  txt = txt.replace(/\r/g, '');
   return txt.split('\n').map(line => {
     const cols = []; let inQ = false, cur = '';
     for (const c of line) {
@@ -263,11 +257,10 @@ function parseCSV(txt) {
   });
 }
 
-// ─────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
 // FETCH CSV — tries API proxy first, falls back to direct fetch
-// ─────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
 async function fetchWeekCSV(gid) {
-  // Try serverless proxy first (bypasses CORS)
   try {
     const res = await fetch(`/api/sheets?gid=${gid}&t=${Date.now()}`);
     if (res.ok) {
@@ -277,45 +270,59 @@ async function fetchWeekCSV(gid) {
   } catch (e) {
     console.warn('API proxy failed for gid', gid, e.message);
   }
-
-  // Fallback: direct Google Sheets fetch
   const res = await fetch(`${PUB_BASE}/pub?single=true&output=csv&gid=${gid}&t=${Date.now()}`);
   if (res.ok) {
     const text = await res.text();
     if (!text.startsWith('<!')) return parseCSV(text);
   }
-
   throw new Error('CSV fetch failed for gid ' + gid);
 }
 
-// ─────────────────────────────────────────────────────────────────
-// PARSE ONE WEEK'S CSV
-//
-// Team assignment: the sheet has team name rows (e.g. "Valley Vipers",
-// "Hognation", "Fili Hustlers", "Torngat") in column A above each
-// team's player block. All players after a team name belong to that
-// team until the next team name appears.
-// ─────────────────────────────────────────────────────────────────
-
-// All possible team name strings that can appear in column A
-const TEAM_NAMES = {
-  'valley vipers':  'Valley Vipers',
-  'hognation':      'Hognation',
-  'fili hustlers':  'Fili Hustlers',
-  'torngat':        'Torngat',
-};
-
+// ═══════════════════════════════════════════════════════════════
+// TEAM NAME MATCHING — FIX: handle "Color - TeamName" format
+// and normalize whitespace
+// ═══════════════════════════════════════════════════════════════
 function matchTeamName(cell) {
-  const lower = cell.toLowerCase().trim();
-  // Exact match
-  if (TEAM_NAMES[lower]) return TEAM_NAMES[lower];
-  // Check if cell contains a team name (handles variations)
-  for (const [key, name] of Object.entries(TEAM_NAMES)) {
+  const lower = cell.toLowerCase().replace(/\s+/g, ' ').trim();
+  // Direct match: "valley vipers"
+  if (TEAM_CANONICAL[lower]) return TEAM_CANONICAL[lower];
+  // "Color - TeamName" format: "black - valley vipers"
+  if (lower.includes(' - ')) {
+    const after = lower.split(' - ').slice(1).join(' - ').trim();
+    if (TEAM_CANONICAL[after]) return TEAM_CANONICAL[after];
+  }
+  // Partial/fuzzy: check if any team name is contained in the cell
+  for (const [key, name] of Object.entries(TEAM_CANONICAL)) {
     if (lower === key) return name;
   }
   return null;
 }
 
+// ═══════════════════════════════════════════════════════════════
+// NORMALIZE PLAYER NAME — collapse whitespace, consistent case
+// Handles: "Rayan  Seghaier" vs "Rayan Seghaier",
+//          " Riley Newman" vs "Riley Newman",
+//          "#N/A Riley Spence" etc.
+// ═══════════════════════════════════════════════════════════════
+function normalizePlayerName(raw) {
+  return raw
+    .replace(/^#N\/A\s*/i, '')        // strip #N/A prefix
+    .replace(/^#\d+\s*/, '')          // strip jersey number
+    .replace(/\s+/g, ' ')            // collapse multiple spaces
+    .trim()
+    .toLowerCase();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PARSE ONE WEEK'S CSV
+//
+// Team assignment: the sheet has team name rows in column A above
+// each team's player block. All players after a team name belong
+// to that team until the next team name appears.
+//
+// Column layout (from actual CSV):
+//   A=Player, B=PTS, C=Fouls, D=FTA, E=empty, F=empty, G=Played
+// ═══════════════════════════════════════════════════════════════
 function parseWeekRows(rows, weekMeta) {
   const label = `Week ${weekMeta.weekNumber}` + (weekMeta.date ? ` — Saturday, ${weekMeta.date.month} ${weekMeta.date.day}, 2026` : '');
   const date = weekMeta.date || { day: 0, month: '?' };
@@ -323,47 +330,50 @@ function parseWeekRows(rows, weekMeta) {
   // Find game headline row
   let games = [];
   for (const row of rows) {
-    const cell = row[0] || '';
+    const cell = (row[0] || '').trim();
     if (/week\s*\d/i.test(cell) && /\bvs\b/i.test(cell)) {
       games = parseGamesFromHeadline(cell);
       break;
     }
   }
 
-  // Find player header row ("Players Stats")
-  const headerIdx = rows.findIndex(r => /player.*stat/i.test(r[0]||''));
+  // Find "Players Stats" header row
+  const headerIdx = rows.findIndex(r => /player.*stat/i.test((r[0]||'').trim()));
   if (headerIdx === -1) return { label, date, games, players: [] };
 
-  // Parse players — team name rows act as team headers
+  // Parse players — team name rows act as section headers
   const players = [];
   let currentTeam = 'Unknown';
 
   for (let i = headerIdx + 1; i < rows.length; i++) {
-    const cell = (rows[i][0]||'').trim();
+    const cell = (rows[i][0] || '').trim();
     if (!cell) continue;
+
+    // Skip known non-player rows
     if (/^players?\s*stats?$/i.test(cell)) continue;
+    if (/goose\s*bay\s*basketball/i.test(cell)) continue;
 
     // Check if this row is a team name header
     const teamMatch = matchTeamName(cell);
     if (teamMatch) {
       currentTeam = teamMatch;
-      continue;  // Don't add the team name as a player
+      continue;
     }
 
-    // Skip non-player rows
-    if (/goose\s*bay\s*basketball/i.test(cell)) continue;
+    // Skip color-prefix rows that aren't team headers (shouldn't happen after fix above, but safety)
     if (/^(black|red|blue|yellow)\s*-/i.test(cell)) continue;
 
-    // Parse player
+    // Parse player row
     const cleanCell = cell.replace(/^#N\/A\s*/i, '');
     const numM = cleanCell.match(/^#?(\d+)\s+(.+)/);
     const num  = numM ? numM[1] : '';
     const name = (numM ? numM[2] : cleanCell.replace(/^#/, '')).trim();
     if (!name) continue;
 
-    const ptsR = (rows[i][1]||'').trim();
-    const flsR = (rows[i][2]||'').trim();
-    const gpR  = (rows[i][6]||'').trim();
+    const ptsR  = (rows[i][1] || '').trim();
+    const flsR  = (rows[i][2] || '').trim();
+    // Column G (index 6) = Played
+    const gpR   = (rows[i][6] || '').trim();
     const isDNP = /dnp/i.test(gpR) || /dnp/i.test(ptsR);
 
     players.push({
@@ -391,22 +401,18 @@ function parseGamesFromHeadline(headline) {
   return games;
 }
 
-// ─────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
 // DISCOVER WEEKS — calls the serverless API
-// ─────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
 async function discoverWeeks() {
   try {
     const res = await fetch(`/api/sheets?t=${Date.now()}`);
     if (!res.ok) throw new Error('API returned ' + res.status);
     const data = await res.json();
-    if (data.success && data.weeks && data.weeks.length > 0) {
-      return data.weeks;
-    }
+    if (data.success && data.weeks && data.weeks.length > 0) return data.weeks;
   } catch (e) {
     console.warn('Week discovery API failed:', e.message);
   }
-
-  // Fallback
   return [
     { name: 'Week 1', weekNumber: 1, gid: '1513965140', date: { day: 14, month: 'Mar' } },
     { name: 'Week 2', weekNumber: 2, gid: '40864786',   date: { day: 21, month: 'Mar' } },
@@ -416,9 +422,9 @@ async function discoverWeeks() {
   ];
 }
 
-// ─────────────────────────────────────────────────────────────────
-// MAIN REFRESH — discovers weeks then fetches all CSVs
-// ─────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+// MAIN REFRESH
+// ═══════════════════════════════════════════════════════════════
 async function refreshData() {
   const btn = document.getElementById('refreshBtn');
   btn.disabled = true; btn.classList.add('spinning');
@@ -459,9 +465,9 @@ function setWeeksStatus(msg) {
     `<span style="font-size:11px;color:var(--muted);">${msg}</span>`;
 }
 
-// ─────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
 // TOAST
-// ─────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
 let toastT;
 function toast(msg, type = '') {
   const el = document.getElementById('toast');
@@ -470,29 +476,93 @@ function toast(msg, type = '') {
   toastT = setTimeout(() => { el.className = ''; }, 3200);
 }
 
-// ─────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
 // HELPERS
-// ─────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
 const dot = team => {
   const t = TEAMS[team];
   return t ? `<span class="team-dot" style="background:${t.dot}"></span>` : '';
 };
 const teamColor = team => (TEAMS[team] || {color:'var(--text)'}).color;
 
+// ═══════════════════════════════════════════════════════════════
+// AGGREGATE PLAYERS — FIX: use normalized name as key,
+// latest week's team assignment wins.
+//
+// If a player appears under Team A in Week 2 and Team B in Week 4,
+// they are assigned to Team B (most recent). Stats are summed
+// across ALL weeks regardless of which team they were listed under.
+//
+// If a player appears under TWO teams in the SAME week (e.g.,
+// Caleb Strugnell under Hognation AND Torngat), the LATER
+// occurrence in that week's CSV wins for team assignment, and
+// stats from both entries are summed.
+// ═══════════════════════════════════════════════════════════════
 function getAllPlayers() {
-  const map = {};
-  weeksData.forEach(w => w.players.forEach(p => {
-    const k = p.name + '|' + p.team;
-    if (!map[k]) map[k] = { name:p.name, num:p.num, team:p.team, pts:0, fouls:0, gp:0 };
-    map[k].pts += p.pts; map[k].fouls += p.fouls; map[k].gp += p.gp;
-    if (p.num) map[k].num = p.num;
+  const map = {};  // keyed by normalized name
+
+  // Process weeks in order (Week 1 first, Week 5 last)
+  // so later weeks overwrite team assignment
+  weeksData.forEach((w, weekIdx) => {
+    w.players.forEach(p => {
+      const key = normalizePlayerName(p.name);
+      if (!key) return;
+
+      if (!map[key]) {
+        map[key] = {
+          name: p.name,
+          num: p.num,
+          team: p.team,
+          pts: 0,
+          fouls: 0,
+          gp: 0,
+          _weekIdx: weekIdx,  // track which week set the team
+        };
+      }
+
+      // Sum stats from every week
+      map[key].pts   += p.pts;
+      map[key].fouls += p.fouls;
+      map[key].gp    += p.gp;
+
+      // Update team to latest week's assignment (later weekIdx wins)
+      // Also update jersey number if we have one
+      if (weekIdx >= map[key]._weekIdx) {
+        map[key].team = p.team;
+        map[key]._weekIdx = weekIdx;
+        if (p.num) map[key].num = p.num;
+        // Use the best capitalized version of the name
+        if (p.name && p.name !== p.name.toLowerCase()) {
+          map[key].name = p.name;
+        }
+      }
+    });
+  });
+
+  return Object.values(map).map(p => ({
+    name: p.name, num: p.num, team: p.team,
+    pts: p.pts, fouls: p.fouls, gp: p.gp,
   }));
-  return Object.values(map);
 }
 
-// ─────────────────────────────────────────────────────────────────
+// Get roster per team (for Teams tab)
+function getTeamRosters() {
+  const players = getAllPlayers();
+  const rosters = {};
+  Object.keys(TEAMS).forEach(t => { rosters[t] = []; });
+  players.forEach(p => {
+    if (rosters[p.team]) {
+      rosters[p.team].push(p);
+    }
+  });
+  // Sort each roster alphabetically
+  Object.values(rosters).forEach(r => r.sort((a,b) => a.name.localeCompare(b.name)));
+  return rosters;
+}
+
+// ═══════════════════════════════════════════════════════════════
 // RENDER: STANDINGS
-// ─────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
 function buildStandings() {
   const rec = {};
   Object.keys(TEAMS).forEach(t => { rec[t] = {w:0,l:0}; });
@@ -528,9 +598,9 @@ function buildStandings() {
   document.getElementById('standings-container').innerHTML = h;
 }
 
-// ─────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
 // RENDER: SCORES
-// ─────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
 function buildScores() {
   let h = '';
   weeksData.forEach(w => {
@@ -563,13 +633,20 @@ function buildScores() {
   document.getElementById('scores-container').innerHTML = h;
 }
 
-// ─────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
 // RENDER: PLAYER STATS
-// ─────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
 function renderStats() {
   let players = getAllPlayers();
   if (activeFilter !== 'all') players = players.filter(p => p.team === activeFilter);
   players.sort((a,b) => sortAsc ? (a[sortCol]||0)-(b[sortCol]||0) : (b[sortCol]||0)-(a[sortCol]||0));
+  // For name sort, use alphabetical
+  if (sortCol === 'name') {
+    players.sort((a,b) => sortAsc ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name));
+  }
+  if (sortCol === 'team') {
+    players.sort((a,b) => sortAsc ? a.team.localeCompare(b.team) : b.team.localeCompare(a.team));
+  }
 
   const cols = [{k:'name',l:'Player'},{k:'team',l:'Team'},{k:'pts',l:'PTS'},{k:'fouls',l:'Fouls'},{k:'gp',l:'GP'}];
   let h = `<div class="stats-wrap"><table class="stats-table"><thead><tr>`;
@@ -580,9 +657,8 @@ function renderStats() {
   h += `</tr></thead><tbody>`;
   players.forEach(p => {
     const num = p.num ? `<span class="player-num">#${p.num}</span>` : '';
-    const dnp = p.dnp ? `<span class="dnp-tag">DNP</span>` : '';
     h += `<tr>
-      <td>${num}<span>${p.name}</span>${dnp}</td>
+      <td>${num}<span>${p.name}</span></td>
       <td><div style="display:flex;align-items:center;gap:7px;">${dot(p.team)}<span style="font-size:12px;color:${teamColor(p.team)};font-weight:600">${p.team}</span></div></td>
       <td><span class="${sortCol==='pts'?'stat-hero':'stat-num'}">${p.pts}</span></td>
       <td><span class="stat-num">${p.fouls}</span></td>
@@ -599,12 +675,11 @@ function renderStats() {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
 // RENDER: SCHEDULE
-// ─────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
 function buildSchedule() {
   const played = weeksData.map(w => ({ ...w, played: true }));
-
   const upcoming = [];
   const d = new Date();
   d.setDate(d.getDate() + ((6 - d.getDay() + 7) % 7 || 7));
@@ -650,14 +725,47 @@ function buildSchedule() {
   document.getElementById('schedule-container').innerHTML = h;
 }
 
-// ─────────────────────────────────────────────────────────────────
-// RENDER ALL
-// ─────────────────────────────────────────────────────────────────
-function renderAll() { buildStandings(); buildScores(); renderStats(); buildSchedule(); }
+// ═══════════════════════════════════════════════════════════════
+// RENDER: TEAMS — now shows actual rosters from data
+// ═══════════════════════════════════════════════════════════════
+function buildTeams() {
+  const rosters = getTeamRosters();
+  const teamMeta = [
+    { name: 'Valley Vipers', label: 'Black', borderColor: '#aaa', pipColor: '#aaa', nameColor: '#c8c8c8' },
+    { name: 'Hognation',     label: 'Red',    borderColor: '#b91c1c', pipColor: '#b91c1c', nameColor: '#fca5a5' },
+    { name: 'Fili Hustlers', label: 'Blue',   borderColor: '#1d4ed8', pipColor: '#1d4ed8', nameColor: '#93c5fd' },
+    { name: 'Torngat',       label: 'Yellow', borderColor: '#ca8a04', pipColor: '#ca8a04', nameColor: '#fde047' },
+  ];
 
-// ─────────────────────────────────────────────────────────────────
+  let h = '<div class="teams-grid">';
+  teamMeta.forEach(tm => {
+    const roster = rosters[tm.name] || [];
+    h += `<div class="team-card" style="border-top-color:${tm.borderColor};">
+      <div class="team-label"><span class="team-pip" style="background:${tm.pipColor};"></span>${tm.label}</div>
+      <div class="team-big-name" style="color:${tm.nameColor};">${tm.name}</div>
+      <div class="roster-list">`;
+    if (roster.length) {
+      roster.forEach(p => {
+        const num = p.num ? `<span class="player-num">#${p.num}</span>` : '';
+        h += `<div class="roster-player">${num}${p.name}</div>`;
+      });
+    } else {
+      h += `<div class="roster-player" style="font-style:italic;">No players loaded</div>`;
+    }
+    h += `</div></div>`;
+  });
+  h += '</div>';
+  document.getElementById('teams-container').innerHTML = h;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER ALL
+// ═══════════════════════════════════════════════════════════════
+function renderAll() { buildStandings(); buildScores(); renderStats(); buildSchedule(); buildTeams(); }
+
+// ═══════════════════════════════════════════════════════════════
 // TABS + FILTERS
-// ─────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
 document.querySelectorAll('.tab-btn').forEach(btn =>
   btn.addEventListener('click', () => {
     document.querySelectorAll('.tab-btn, .tab-panel').forEach(el => el.classList.remove('active'));
@@ -674,9 +782,9 @@ document.querySelectorAll('.filter-btn').forEach(btn =>
   })
 );
 
-// ─────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
 // INIT
-// ─────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
 refreshData().catch(() => {});
 </script>
 </body>
