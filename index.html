@@ -227,19 +227,19 @@ footer strong { color: var(--accent); }
 
 <script>
 // ─────────────────────────────────────────────────────────────────
-// CONFIG — set once, never touch again
+// CONFIG
 // ─────────────────────────────────────────────────────────────────
 
-// Published base URL
+// Published base URL (used as direct fallback if API is down)
 const PUB_BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQxnfq6e_VLNn2t8SKm2CE8H-EIzLhstfs2fTPpcPZGkgMAc_5LvE2rV4R7hN5BybR42KvAu91o3Zx8';
 
-// All known week GIDs — add new ones as your brother adds tabs each week
-const KNOWN_WEEKS = [
-  { gid: '1513965140', label: 'Week 1 — Saturday, March 14, 2026', date: { day: 14, month: 'Mar' } },
-  { gid: '40864786',   label: 'Week 2 — Saturday, March 21, 2026', date: { day: 21, month: 'Mar' } },
-  { gid: '587090763',  label: 'Week 3 — Saturday, March 28, 2026', date: { day: 28, month: 'Mar' } },
-  { gid: '1644843033', label: 'Week 4 — Saturday, April 4, 2026',  date: { day:  4, month: 'Apr' } },
-];
+// Fallback GIDs — only used if the serverless API is completely down
+const FALLBACK_GIDS = {
+  'GBB Week 1 - Sat, March 14th 2026 Player Stats': '1513965140',
+  'GBB Week 2 - Sat, March 21st 2026 Player Stats': '40864786',
+  'GBB Week 3 - Sat, March 28th 2026 Player Stats': '587090763',
+  'GBB Week 4 - Sat, April 4th 2026 Player Stats':  '1644843033',
+};
 
 const TEAMS = {
   'Valley Vipers': { color: '#c8c8c8', dot: '#aaaaaa' },
@@ -259,7 +259,6 @@ const FALLBACK = [{
     { home:'Hognation', homeScore:41, away:'Fili Hustlers', awayScore:54 },
   ],
   players: [
-    // Hognation
     {name:'James Dempster',num:'',team:'Hognation',pts:0,fouls:0,gp:0},
     {name:'Jack Leonard',num:'',team:'Hognation',pts:0,fouls:0,gp:0},
     {name:'Alex Barney',num:'',team:'Hognation',pts:0,fouls:0,gp:0},
@@ -271,7 +270,6 @@ const FALLBACK = [{
     {name:'Breck Merser',num:'',team:'Hognation',pts:0,fouls:0,gp:0},
     {name:'Max Montague',num:'',team:'Hognation',pts:0,fouls:0,gp:0},
     {name:'Carlito Hillier',num:'',team:'Hognation',pts:0,fouls:0,gp:0},
-    // Fili Hustlers
     {name:'Chris Bennett',num:'0',team:'Fili Hustlers',pts:5,fouls:0,gp:1},
     {name:'Benjamin Ralph',num:'',team:'Fili Hustlers',pts:0,fouls:0,gp:0,dnp:true},
     {name:'Cameron Tobin',num:'45',team:'Fili Hustlers',pts:8,fouls:0,gp:1},
@@ -284,7 +282,6 @@ const FALLBACK = [{
     {name:'Humphrey Kiwanuka',num:'',team:'Fili Hustlers',pts:0,fouls:0,gp:0,dnp:true},
     {name:'Keegan Blake',num:'25',team:'Fili Hustlers',pts:3,fouls:0,gp:1},
     {name:'Austin Strom',num:'40',team:'Fili Hustlers',pts:3,fouls:1,gp:1},
-    // Valley Vipers
     {name:'Yaniv Koblentz',num:'',team:'Valley Vipers',pts:0,fouls:0,gp:0},
     {name:'Kyle Decker',num:'',team:'Valley Vipers',pts:0,fouls:0,gp:0},
     {name:'Riley Gregorie',num:'',team:'Valley Vipers',pts:0,fouls:0,gp:0},
@@ -297,7 +294,6 @@ const FALLBACK = [{
     {name:'Ayden Sponagle',num:'',team:'Valley Vipers',pts:0,fouls:0,gp:0},
     {name:'Logan Lyal',num:'',team:'Valley Vipers',pts:0,fouls:0,gp:0},
     {name:'Riley Newman',num:'',team:'Valley Vipers',pts:0,fouls:0,gp:0},
-    // Torngat
     {name:'Jester Reynales',num:'3',team:'Torngat',pts:7,fouls:0,gp:1},
     {name:'Eric Canlas',num:'14',team:'Torngat',pts:7,fouls:0,gp:1},
     {name:'Ck Canlas',num:'44',team:'Torngat',pts:14,fouls:0,gp:1},
@@ -320,113 +316,8 @@ let usingLive = false;
 let sortCol = 'pts', sortAsc = false, activeFilter = 'all';
 
 // ─────────────────────────────────────────────────────────────────
-// STEP 1: AUTO-DISCOVER WEEK TABS
-//
-// Strategy: Google Sheets exposes sheet metadata via the gviz/tq
-// endpoint. The response is JSONP — we strip the callback wrapper
-// and parse the JSON. The table description includes sheet names
-// but NOT gids directly. So we use a second trick: fetch the
-// pubhtml page which embeds sheet names + gids in its navigation.
-//
-// Since pubhtml is a JS-rendered SPA, we instead rely on the
-// ORIGINAL sheet's gviz endpoint which DOES return sheet metadata
-// including sheet names + gids in a parseable format.
+// CSV PARSING
 // ─────────────────────────────────────────────────────────────────
-async function discoverWeekTabs() {
-  // The gviz/tq endpoint returns JSONP with sheet info embedded
-  // We fetch with no query so it returns metadata about the first sheet,
-  // but crucially the response includes all sheet names in the JSON wrapper
-  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&t=${Date.now()}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error('gviz fetch failed: ' + res.status);
-  const raw = await res.text();
-
-  // Strip the JSONP wrapper: google.visualization.Query.setResponse({...});
-  const jsonStr = raw.match(/\{.*\}/s)?.[0];
-  if (!jsonStr) throw new Error('Could not parse gviz response');
-  const data = JSON.parse(jsonStr);
-
-  // Sheet names are in data.table... but gids aren't directly there.
-  // However, the raw response text contains sheet info in a different field.
-  // Let's also check the full response for sheet tab data.
-
-  // Extract from the raw JSONP — Google embeds tab info like:
-  // "sheetName":"GBB Week 1...","sheetId":1513965140
-  const tabMatches = [...raw.matchAll(/"sheetId"\s*:\s*(\d+)[^}]*?"sheetName"\s*:\s*"([^"]+)"/g)];
-  const altMatches = [...raw.matchAll(/"sheetName"\s*:\s*"([^"]+)"[^}]*?"sheetId"\s*:\s*(\d+)/g)];
-
-  const tabs = [];
-  const seen = new Set();
-
-  for (const m of [...tabMatches, ...altMatches]) {
-    const gid  = m[1].length > 5 ? m[1] : m[2];
-    const name = m[1].length > 5 ? m[2] : m[1];
-    if (name.includes(WEEK_TAB_MATCH) && !seen.has(gid)) {
-      seen.add(gid);
-      tabs.push({ name, gid });
-    }
-  }
-
-  // Fallback: try fetching each known gid from the URL hash
-  // (We know Week 1's gid from the screenshot URL)
-  if (tabs.length === 0) {
-    tabs.push({ name: 'GBB Week 1 - Sat, March 14th 2026 Player Stats', gid: '1513965140' });
-    // Then probe for more tabs by trying a range of gids
-    // (Not ideal — see below for the better approach)
-  }
-
-  return tabs;
-}
-
-// ─────────────────────────────────────────────────────────────────
-// BETTER DISCOVERY: Fetch the sheet's public HTML index
-// Google publishes a list of sheets at /pub?rm=minimal
-// which includes tab names and gids in the HTML source
-// ─────────────────────────────────────────────────────────────────
-async function discoverTabsReliably() {
-  // This endpoint returns the sheet navigation HTML with gids
-  const url = `${PUB_BASE}/pub?rm=minimal&t=${Date.now()}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error('pub fetch failed');
-  const html = await res.text();
-
-  const tabs = [];
-  const seen = new Set();
-
-  // Pattern 1: id="s1513965140" or similar with tab name nearby
-  const re1 = /id="s(\d{5,})"[^>]*>([^<]*GBB Week[^<]*)</g;
-  let m;
-  while ((m = re1.exec(html)) !== null) {
-    if (!seen.has(m[1])) { seen.add(m[1]); tabs.push({ gid: m[1], name: m[2].trim() }); }
-  }
-
-  // Pattern 2: gid in href + tab name
-  const re2 = /gid=(\d{5,})[^"]*"[^>]*>\s*<[^>]*>\s*([^<]*GBB Week[^<]*)</g;
-  while ((m = re2.exec(html)) !== null) {
-    if (!seen.has(m[1])) { seen.add(m[1]); tabs.push({ gid: m[1], name: m[2].trim() }); }
-  }
-
-  // Pattern 3: data attributes
-  const re3 = /data-(?:id|gid)="(\d{5,})"[^>]*>\s*(?:<[^>]*>)?\s*([^<]*GBB Week[^<]*)</g;
-  while ((m = re3.exec(html)) !== null) {
-    if (!seen.has(m[1])) { seen.add(m[1]); tabs.push({ gid: m[1], name: m[2].trim() }); }
-  }
-
-  return tabs;
-}
-
-// ─────────────────────────────────────────────────────────────────
-// STEP 2: FETCH ONE TAB AS CSV
-// Uses the published /pub?gid=... endpoint
-// ─────────────────────────────────────────────────────────────────
-async function fetchTabCSV(gid) {
-  // Try published URL first (works once sheet is published to web)
-  const url = `${PUB_BASE}/pub?single=true&output=csv&gid=${gid}&t=${Date.now()}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error('CSV fetch failed for gid ' + gid);
-  return parseCSV(await res.text());
-}
-
 function parseCSV(txt) {
   return txt.split('\n').map(line => {
     const cols = []; let inQ = false, cur = '';
@@ -441,21 +332,53 @@ function parseCSV(txt) {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// STEP 3: PARSE ONE WEEK TAB'S CSV
-//
-// Sheet column layout (confirmed from live CSV):
-//   col 0 = Player name  col 1 = PTS  col 2 = Fouls  col 3 = FTA
-//   col 4 = (empty)      col 5 = (empty)              col 6 = Played / DNP
-//
-// Team blocks run continuously — no blank rows between them.
-// Order is always: Hognation → Fili Hustlers → Valley Vipers → Torngat
-// Each team's block size is fixed by the template your brother duplicates.
-// We detect team boundaries by counting player rows per team block.
+// FETCH CSV — tries API proxy first, falls back to direct GID
+// ─────────────────────────────────────────────────────────────────
+async function fetchWeekCSV(weekName) {
+  // Try the serverless API proxy first (preferred — no CORS issues)
+  try {
+    const apiUrl = `/api/sheets?week=${encodeURIComponent(weekName)}&t=${Date.now()}`;
+    const res = await fetch(apiUrl);
+    if (res.ok) {
+      const text = await res.text();
+      if (!text.startsWith('{') && !text.startsWith('<!')) { // valid CSV, not JSON error or HTML
+        return parseCSV(text);
+      }
+    }
+  } catch (e) {
+    console.warn('API proxy failed for', weekName, e.message);
+  }
+
+  // Fallback: try direct Google Sheets CSV by sheet name
+  try {
+    const directUrl = `${PUB_BASE}/pub?single=true&output=csv&sheet=${encodeURIComponent(weekName)}&t=${Date.now()}`;
+    const res = await fetch(directUrl);
+    if (res.ok) {
+      const text = await res.text();
+      if (!text.startsWith('<!')) return parseCSV(text);
+    }
+  } catch (e) {
+    console.warn('Direct sheet-name fetch failed for', weekName, e.message);
+  }
+
+  // Last resort: try by hardcoded GID if we have one
+  const gid = FALLBACK_GIDS[weekName];
+  if (gid) {
+    const gidUrl = `${PUB_BASE}/pub?single=true&output=csv&gid=${gid}&t=${Date.now()}`;
+    const res = await fetch(gidUrl);
+    if (res.ok) return parseCSV(await res.text());
+  }
+
+  throw new Error('All CSV fetch methods failed for ' + weekName);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// PARSE ONE WEEK'S CSV INTO STRUCTURED DATA
 // ─────────────────────────────────────────────────────────────────
 function parseWeekRows(rows, weekMeta) {
-  // weekMeta is a KNOWN_WEEKS entry: { gid, label, date }
-  const label = weekMeta.label;
-  const date  = weekMeta.date;
+  // weekMeta: { name, weekNumber, date }
+  const label = `Week ${weekMeta.weekNumber}` + (weekMeta.date ? ` — Saturday, ${weekMeta.date.month} ${weekMeta.date.day}, 2026` : '');
+  const date = weekMeta.date || { day: 0, month: '?' };
 
   // Find game headline row (contains "Week" + "vs")
   let games = [];
@@ -467,22 +390,20 @@ function parseWeekRows(rows, weekMeta) {
     }
   }
 
-  // Find player header row (row 13 in sheet = "Players Stats, PTS, Fouls...")
+  // Find player header row
   const headerIdx = rows.findIndex(r => /player.*stat/i.test(r[0]||''));
   if (headerIdx === -1) return { label, date, games, players: [] };
 
-  // Collect all player rows after the header (skip truly empty rows)
+  // Collect player rows (skip blanks and repeated headers)
   const playerRows = [];
   for (let i = headerIdx + 1; i < rows.length; i++) {
     const cell = (rows[i][0]||'').trim();
-    if (!cell) continue; // skip blank rows
-    if (/^players?\s*stats?$/i.test(cell)) continue; // skip repeated headers
+    if (!cell) continue;
+    if (/^players?\s*stats?$/i.test(cell)) continue;
     playerRows.push(rows[i]);
   }
 
-  // Fixed team block order and sizes matching the sheet template.
-  // These are the player counts per team in the order they appear in the sheet.
-  // Hognation first, then Fili Hustlers, Valley Vipers, Torngat.
+  // Fixed team block order + sizes (matches the sheet template)
   const TEAM_BLOCKS = [
     { team: 'Hognation',     count: 11 },
     { team: 'Fili Hustlers', count: 12 },
@@ -501,17 +422,14 @@ function parseWeekRows(rows, weekMeta) {
       const cell = (row[0]||'').trim();
       if (!cell) continue;
 
-      // Handle "#N/A PlayerName" edge case from sheet
       const cleanCell = cell.replace(/^#N\/A\s*/i, '');
-
-      // Parse jersey number from "#45 Cameron Tobin" format
       const numM = cleanCell.match(/^#?(\d+)\s+(.+)/);
       const num  = numM ? numM[1] : '';
       const name = (numM ? numM[2] : cleanCell).trim();
 
       const ptsR = (row[1]||'').trim();
       const flsR = (row[2]||'').trim();
-      const gpR  = (row[6]||'').trim(); // GP/DNP is column 6 (not 3!)
+      const gpR  = (row[6]||'').trim();
 
       const isDNP = /dnp/i.test(gpR) || /dnp/i.test(ptsR);
 
@@ -542,16 +460,48 @@ function parseGamesFromHeadline(headline) {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// MAIN REFRESH FUNCTION - fetches all KNOWN_WEEKS in parallel
+// DISCOVER WEEKS — calls the serverless API
+// ─────────────────────────────────────────────────────────────────
+async function discoverWeeks() {
+  try {
+    const res = await fetch(`/api/sheets?t=${Date.now()}`);
+    if (!res.ok) throw new Error('API returned ' + res.status);
+    const data = await res.json();
+    if (data.success && data.weeks && data.weeks.length > 0) {
+      return data.weeks; // [{ name, weekNumber, date }, ...]
+    }
+  } catch (e) {
+    console.warn('Week discovery API failed:', e.message);
+  }
+
+  // Fallback: return hardcoded weeks from FALLBACK_GIDS
+  return Object.keys(FALLBACK_GIDS).map(name => {
+    const weekNum = parseInt(name.match(/week\s*(\d+)/i)?.[1] || '0');
+    const dateMatch = name.match(/(\w+)\s+(\d+)(?:st|nd|rd|th)/i);
+    return {
+      name,
+      weekNumber: weekNum,
+      date: dateMatch ? { day: parseInt(dateMatch[2]), month: dateMatch[1].substring(0,3) } : null,
+    };
+  }).sort((a,b) => a.weekNumber - b.weekNumber);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// MAIN REFRESH — discovers weeks then fetches all CSVs
 // ─────────────────────────────────────────────────────────────────
 async function refreshData() {
   const btn = document.getElementById('refreshBtn');
   btn.disabled = true; btn.classList.add('spinning');
-  setWeeksStatus('Loading ' + KNOWN_WEEKS.length + ' weeks...');
+  setWeeksStatus('Discovering weeks...');
 
+  // Step 1: Discover available week tabs
+  const weeks = await discoverWeeks();
+  setWeeksStatus(`Found ${weeks.length} week${weeks.length !== 1 ? 's' : ''} — loading data...`);
+
+  // Step 2: Fetch CSV for each week in parallel
   const results = await Promise.allSettled(
-    KNOWN_WEEKS.map(async w => {
-      const rows = await fetchTabCSV(w.gid);
+    weeks.map(async w => {
+      const rows = await fetchWeekCSV(w.name);
       return parseWeekRows(rows, w);
     })
   );
@@ -571,12 +521,10 @@ async function refreshData() {
     setWeeksStatus(fresh.length + ' week' + (fresh.length>1?'s':'') + ' loaded live');
     toast(fresh.length + ' week' + (fresh.length>1?'s':'') + ' loaded', 'success');
   } else {
-    toast('Could not load sheet', 'error');
+    toast('Could not load sheet data', 'error');
     setWeeksStatus('Using saved data');
   }
 }
-
-// DUMMY replaced function placeholder
 
 function setWeeksStatus(msg) {
   document.getElementById('weeksStatus').innerHTML =
@@ -729,7 +677,6 @@ function renderStats() {
 function buildSchedule() {
   const played = weeksData.map(w => ({ ...w, played: true }));
 
-  // Generate next 6 upcoming Saturdays
   const upcoming = [];
   const d = new Date();
   d.setDate(d.getDate() + ((6 - d.getDay() + 7) % 7 || 7));
@@ -802,8 +749,8 @@ document.querySelectorAll('.filter-btn').forEach(btn =>
 // ─────────────────────────────────────────────────────────────────
 // INIT
 // ─────────────────────────────────────────────────────────────────
-renderAll(); // show fallback immediately
-refreshData().catch(() => {}); // then auto-refresh from live sheet
+renderAll();
+refreshData().catch(() => {});
 </script>
 </body>
 </html>
