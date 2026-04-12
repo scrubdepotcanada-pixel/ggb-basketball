@@ -311,42 +311,8 @@ let sortCol = 'pts', sortAsc = false, activeFilter = 'all';
 // FETCH WEEK DATA — uses the /api/sheets?players=GID endpoint
 // which reads cell background colors to determine team assignment
 // ─────────────────────────────────────────────────────────────────
-async function fetchWeekData(gid, weekMeta) {
-  const label = `Week ${weekMeta.weekNumber}` + (weekMeta.date ? ` — Saturday, ${weekMeta.date.month} ${weekMeta.date.day}, 2026` : '');
-  const date = weekMeta.date || { day: 0, month: '?' };
-
-  // Try the API endpoint that returns players with team colors
-  try {
-    const res = await fetch(`/api/sheets?players=${gid}&t=${Date.now()}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data.success && data.players && data.players.length > 0) {
-        const games = data.headline ? parseGamesFromHeadline(data.headline) : [];
-        return { label, date, games, players: data.players };
-      }
-    }
-  } catch (e) {
-    console.warn('API players endpoint failed for gid', gid, e.message);
-  }
-
-  // Fallback: fetch CSV directly and use name-based team matching
-  try {
-    const csvUrl = `${PUB_BASE}/pub?single=true&output=csv&gid=${gid}&t=${Date.now()}`;
-    const res = await fetch(csvUrl);
-    if (res.ok) {
-      const text = await res.text();
-      if (!text.startsWith('<!')) {
-        const rows = parseCSV(text);
-        return parseWeekRowsFallback(rows, weekMeta);
-      }
-    }
-  } catch (e) {
-    console.warn('CSV fallback failed for gid', gid, e.message);
-  }
-
-  return { label, date, games: [], players: [] };
-}
-
+// CSV PARSING
+// ─────────────────────────────────────────────────────────────────
 function parseCSV(txt) {
   return txt.split('\n').map(line => {
     const cols = []; let inQ = false, cur = '';
@@ -360,14 +326,64 @@ function parseCSV(txt) {
   });
 }
 
-// CSV fallback — uses last known team assignment from the master roster
-// This roster gets populated from successful API calls with color data
-const KNOWN_ROSTER = {};  // { "PlayerName": "TeamName" }
+// ─────────────────────────────────────────────────────────────────
+// FETCH CSV — tries API proxy first, falls back to direct fetch
+// ─────────────────────────────────────────────────────────────────
+async function fetchWeekCSV(gid) {
+  // Try serverless proxy first (bypasses CORS)
+  try {
+    const res = await fetch(`/api/sheets?gid=${gid}&t=${Date.now()}`);
+    if (res.ok) {
+      const text = await res.text();
+      if (!text.startsWith('{') && !text.startsWith('<!')) return parseCSV(text);
+    }
+  } catch (e) {
+    console.warn('API proxy failed for gid', gid, e.message);
+  }
 
-function parseWeekRowsFallback(rows, weekMeta) {
+  // Fallback: direct Google Sheets fetch
+  const res = await fetch(`${PUB_BASE}/pub?single=true&output=csv&gid=${gid}&t=${Date.now()}`);
+  if (res.ok) {
+    const text = await res.text();
+    if (!text.startsWith('<!')) return parseCSV(text);
+  }
+
+  throw new Error('CSV fetch failed for gid ' + gid);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// PARSE ONE WEEK'S CSV
+//
+// Team assignment: the sheet has team name rows (e.g. "Valley Vipers",
+// "Hognation", "Fili Hustlers", "Torngat") in column A above each
+// team's player block. All players after a team name belong to that
+// team until the next team name appears.
+// ─────────────────────────────────────────────────────────────────
+
+// All possible team name strings that can appear in column A
+const TEAM_NAMES = {
+  'valley vipers':  'Valley Vipers',
+  'hognation':      'Hognation',
+  'fili hustlers':  'Fili Hustlers',
+  'torngat':        'Torngat',
+};
+
+function matchTeamName(cell) {
+  const lower = cell.toLowerCase().trim();
+  // Exact match
+  if (TEAM_NAMES[lower]) return TEAM_NAMES[lower];
+  // Check if cell contains a team name (handles variations)
+  for (const [key, name] of Object.entries(TEAM_NAMES)) {
+    if (lower === key) return name;
+  }
+  return null;
+}
+
+function parseWeekRows(rows, weekMeta) {
   const label = `Week ${weekMeta.weekNumber}` + (weekMeta.date ? ` — Saturday, ${weekMeta.date.month} ${weekMeta.date.day}, 2026` : '');
   const date = weekMeta.date || { day: 0, month: '?' };
 
+  // Find game headline row
   let games = [];
   for (const row of rows) {
     const cell = row[0] || '';
@@ -377,15 +393,31 @@ function parseWeekRowsFallback(rows, weekMeta) {
     }
   }
 
+  // Find player header row ("Players Stats")
   const headerIdx = rows.findIndex(r => /player.*stat/i.test(r[0]||''));
   if (headerIdx === -1) return { label, date, games, players: [] };
 
+  // Parse players — team name rows act as team headers
   const players = [];
+  let currentTeam = 'Unknown';
+
   for (let i = headerIdx + 1; i < rows.length; i++) {
     const cell = (rows[i][0]||'').trim();
     if (!cell) continue;
     if (/^players?\s*stats?$/i.test(cell)) continue;
 
+    // Check if this row is a team name header
+    const teamMatch = matchTeamName(cell);
+    if (teamMatch) {
+      currentTeam = teamMatch;
+      continue;  // Don't add the team name as a player
+    }
+
+    // Skip non-player rows
+    if (/goose\s*bay\s*basketball/i.test(cell)) continue;
+    if (/^(black|red|blue|yellow)\s*-/i.test(cell)) continue;
+
+    // Parse player
     const cleanCell = cell.replace(/^#N\/A\s*/i, '');
     const numM = cleanCell.match(/^#?(\d+)\s+(.+)/);
     const num  = numM ? numM[1] : '';
@@ -397,15 +429,13 @@ function parseWeekRowsFallback(rows, weekMeta) {
     const gpR  = (rows[i][6]||'').trim();
     const isDNP = /dnp/i.test(gpR) || /dnp/i.test(ptsR);
 
-    // Use known roster for team assignment
-    const team = KNOWN_ROSTER[name] || 'Unknown';
-
     players.push({
-      name, num, team,
-      pts: parseInt(ptsR) || 0,
+      name, num,
+      team: currentTeam,
+      pts:   parseInt(ptsR) || 0,
       fouls: parseInt(flsR) || 0,
-      gp: isDNP ? 0 : (parseInt(gpR) || 0),
-      dnp: isDNP
+      gp:    isDNP ? 0 : (parseInt(gpR) || 0),
+      dnp:   isDNP,
     });
   }
 
@@ -433,13 +463,13 @@ async function discoverWeeks() {
     if (!res.ok) throw new Error('API returned ' + res.status);
     const data = await res.json();
     if (data.success && data.weeks && data.weeks.length > 0) {
-      return data.weeks; // [{ name, weekNumber, date }, ...]
+      return data.weeks;
     }
   } catch (e) {
     console.warn('Week discovery API failed:', e.message);
   }
 
-  // Fallback: return hardcoded weeks
+  // Fallback
   return [
     { name: 'Week 1', weekNumber: 1, gid: '1513965140', date: { day: 14, month: 'Mar' } },
     { name: 'Week 2', weekNumber: 2, gid: '40864786',   date: { day: 21, month: 'Mar' } },
@@ -457,25 +487,20 @@ async function refreshData() {
   btn.disabled = true; btn.classList.add('spinning');
   setWeeksStatus('Discovering weeks...');
 
-  // Step 1: Discover available week tabs
   const weeks = await discoverWeeks();
   setWeeksStatus(`Found ${weeks.length} week${weeks.length !== 1 ? 's' : ''} — loading data...`);
 
-  // Step 2: Fetch data for each week in parallel (uses API with color detection)
   const results = await Promise.allSettled(
-    weeks.map(async w => fetchWeekData(w.gid, w))
+    weeks.map(async w => {
+      const rows = await fetchWeekCSV(w.gid);
+      return parseWeekRows(rows, w);
+    })
   );
 
   const fresh = results
     .filter(r => r.status === 'fulfilled')
     .map(r => r.value)
     .filter(w => w.players.length > 0 || w.games.length > 0);
-
-  // Populate KNOWN_ROSTER from successful color-based results
-  // so CSV fallback can use it for future calls
-  fresh.forEach(w => w.players.forEach(p => {
-    if (p.team && p.team !== 'Unknown') KNOWN_ROSTER[p.name] = p.team;
-  }));
 
   btn.disabled = false; btn.classList.remove('spinning');
 
