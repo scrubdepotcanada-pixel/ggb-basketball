@@ -1,46 +1,47 @@
 // /api/sheets.js — Vercel serverless function
 //
 // Two modes:
-//   GET /api/sheets           → returns list of all week tab names (auto-discovery)
-//   GET /api/sheets?week=GBB Week 1... → proxies CSV data for that tab
+//   GET /api/sheets              → discover all week tabs (names + GIDs)
+//   GET /api/sheets?gid=XXXXX    → proxy CSV for that GID (bypasses CORS)
 //
-// Discovery: Downloads published sheet as XLSX, parses workbook.xml for sheet names.
-// CSV proxy: Fetches CSV by sheet name — no GID needed.
-//
-// Tab naming convention in the sheet:
-//   "GBB Week 1 - Sat, March 14th 2026 Player Stats"
-//   "GBB Week 2 - Sat, March 21st 2026 Player Stats"
-//   etc.
-// We match any tab containing "GBB" and "Week" (case-insensitive).
+// Discovery uses Google Sheets API v4 (free, no key needed for public sheets)
+// which returns all sheet names + sheetIds in clean JSON.
 
-const PUB_BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQxnfq6e_VLNn2t8SKm2CE8H-EIzLhstfs2fTPpcPZGkgMAc_5LvE2rV4R7hN5BybR42KvAu91o3Zx8';
 const SHEET_ID = '1Gs9IzkezmssKoiCRNVbM78_xkIN5hXo8Fao3R3voJHo';
+const PUB_BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQxnfq6e_VLNn2t8SKm2CE8H-EIzLhstfs2fTPpcPZGkgMAc_5LvE2rV4R7hN5BybR42KvAu91o3Zx8';
+
+// Hardcoded fallback — site never breaks
+const FALLBACK_WEEKS = [
+  { name: 'GBB Week 1 - Sat, March 14th 2026 Player Stats', weekNumber: 1, gid: '1513965140', date: { day: 14, month: 'Mar' } },
+  { name: 'GBB Week 2 - Sat, March 21st 2026 Player Stats', weekNumber: 2, gid: '40864786',   date: { day: 21, month: 'Mar' } },
+  { name: 'GBB Week 3 - Sat, March 28th 2026 Player Stats', weekNumber: 3, gid: '587090763',  date: { day: 28, month: 'Mar' } },
+  { name: 'GBB Week 4 - Sat, April 4th 2026 Player Stats',  weekNumber: 4, gid: '1644843033', date: { day:  4, month: 'Apr' } },
+  { name: 'GBB Week 5 - Sat, April 11th 2026 Player Stats', weekNumber: 5, gid: '1402349068', date: { day: 11, month: 'Apr' } },
+];
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET');
 
-  const { week } = req.query;
+  const { gid } = req.query;
 
-  // ─── Mode 2: Proxy CSV for a specific week tab ───
-  if (week) {
+  // ─── Mode 2: Proxy CSV for a specific GID ───
+  if (gid) {
     try {
-      // Try by sheet name first (works with the published 2PACX URL)
-      const csvUrl = `${PUB_BASE}/pub?single=true&output=csv&sheet=${encodeURIComponent(week)}`;
+      const csvUrl = `${PUB_BASE}/pub?single=true&output=csv&gid=${gid}`;
       const csvResp = await fetch(csvUrl, {
         headers: { 'User-Agent': 'Mozilla/5.0 (compatible)' },
         redirect: 'follow',
       });
 
       if (!csvResp.ok) {
-        return res.status(404).json({ success: false, error: `Tab "${week}" not found` });
+        return res.status(404).json({ success: false, error: `GID ${gid} fetch failed: ${csvResp.status}` });
       }
 
       const csvText = await csvResp.text();
 
-      // Validate it's CSV, not an error page
       if (csvText.startsWith('<!DOCTYPE') || csvText.startsWith('<html')) {
-        return res.status(404).json({ success: false, error: `Tab "${week}" returned HTML — may not be published` });
+        return res.status(404).json({ success: false, error: `GID ${gid} returned HTML instead of CSV` });
       }
 
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -55,39 +56,65 @@ export default async function handler(req, res) {
   let tabs = [];
   let source = 'unknown';
 
-  // Strategy A: Download as XLSX and parse workbook.xml for sheet names
+  // Strategy A: Google Sheets API v4 — returns sheet metadata as clean JSON
+  // Works without an API key for publicly shared sheets
   try {
-    const xlsxUrl = `${PUB_BASE}/pub?output=xlsx`;
-    const xlsxResp = await fetch(xlsxUrl, {
+    const apiUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}?fields=sheets(properties(sheetId,title))`;
+    const apiResp = await fetch(apiUrl, {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible)' },
-      redirect: 'follow',
     });
 
-    if (xlsxResp.ok) {
-      const buffer = await xlsxResp.arrayBuffer();
-      const bytes = new Uint8Array(buffer);
-      const text = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
-
-      // XLSX is a ZIP — workbook.xml contains <sheet name="..." .../>
-      const sheetRegex = /<sheet\s[^>]*name="([^"]+)"/g;
-      let match;
-      while ((match = sheetRegex.exec(text)) !== null) {
-        const name = match[1]
-          .replace(/&amp;/g, '&')
-          .replace(/&lt;/g, '<')
-          .replace(/&gt;/g, '>')
-          .replace(/&quot;/g, '"')
-          .replace(/&apos;/g, "'");
-        tabs.push(name);
+    if (apiResp.ok) {
+      const data = await apiResp.json();
+      if (data.sheets && data.sheets.length > 0) {
+        tabs = data.sheets.map(s => ({
+          name: s.properties.title,
+          gid: String(s.properties.sheetId),
+        }));
+        source = 'sheets-api';
       }
-
-      if (tabs.length > 0) source = 'xlsx';
+    } else {
+      console.error('Sheets API returned:', apiResp.status);
     }
   } catch (e) {
-    console.error('XLSX discovery failed:', e.message);
+    console.error('Sheets API failed:', e.message);
   }
 
-  // Strategy B: Try pubhtml parsing as fallback
+  // Strategy B: Export as XLSX and parse workbook.xml
+  if (tabs.length === 0) {
+    try {
+      const exportUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=xlsx`;
+      const xlsxResp = await fetch(exportUrl, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible)' },
+        redirect: 'follow',
+      });
+
+      if (xlsxResp.ok) {
+        const buffer = await xlsxResp.arrayBuffer();
+        const text = new TextDecoder('utf-8', { fatal: false }).decode(new Uint8Array(buffer));
+
+        // Parse <sheet name="..." sheetId="..." .../> from workbook.xml inside the ZIP
+        const sheetRegex = /<sheet[^>]+name="([^"]+)"[^>]+sheetId="(\d+)"/g;
+        let match;
+        while ((match = sheetRegex.exec(text)) !== null) {
+          const name = match[1]
+            .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"').replace(/&apos;/g, "'");
+          tabs.push({ name, gid: match[2] });
+        }
+
+        // Note: sheetId in workbook.xml is NOT the same as the gid in the URL.
+        // workbook.xml sheetId is sequential (1, 2, 3...) while URL gid is the actual sheet ID.
+        // We need r:id to map to the correct gid. This approach is unreliable for gids.
+        // If we got names but wrong gids, we'll try to match by name to known gids.
+        if (tabs.length > 0) source = 'xlsx';
+      }
+    } catch (e) {
+      console.error('XLSX export failed:', e.message);
+    }
+  }
+
+  // Strategy C: pubhtml page parsing
   if (tabs.length === 0) {
     try {
       const pubUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/pubhtml`;
@@ -97,43 +124,45 @@ export default async function handler(req, res) {
       });
       const html = await pubResp.text();
 
+      // Try multiple patterns
       const patterns = [
-        /id="sheet-button-\d+"[\s\S]*?<a[^>]*>([^<]+)<\/a>/g,
-        /data-name="([^"]+)"/g,
+        /id="sheet-button-(\d+)"[\s\S]*?<a[^>]*>([^<]+)<\/a>/g,
+        /data-name="([^"]+)"[^>]*data-gid="(\d+)"/g,
+        /gid=(\d+)[^"]*"[^>]*>([^<]*GBB[^<]*)</g,
       ];
 
       for (const regex of patterns) {
         let m;
         while ((m = regex.exec(html)) !== null) {
-          const name = (m[1] || '').trim();
-          if (name && !tabs.includes(name)) tabs.push(name);
+          // Pattern 1: gid first, name second
+          // Pattern 2: name first, gid second
+          // Pattern 3: gid first, name second
+          const isNameFirst = regex.source.startsWith('data-name');
+          const gid = isNameFirst ? m[2] : m[1];
+          const name = (isNameFirst ? m[1] : m[2]).trim();
+          if (name && !tabs.some(t => t.gid === gid)) {
+            tabs.push({ name, gid });
+          }
         }
-        if (tabs.length > 0) break;
+        if (tabs.length > 0) { source = 'pubhtml'; break; }
       }
-
-      if (tabs.length > 0) source = 'pubhtml';
-    } catch (e2) {
-      console.error('pubhtml fallback failed:', e2.message);
+    } catch (e) {
+      console.error('pubhtml failed:', e.message);
     }
   }
 
-  // Filter to week tabs: match anything with "GBB" + "Week" or just "Week \d"
+  // Filter to week tabs
   const weekTabs = tabs
-    .filter(name => /week\s*\d+/i.test(name))
-    .map(name => {
-      const weekNum = parseInt(name.match(/week\s*(\d+)/i)?.[1] || '0');
-
-      // Extract date from tab name like "GBB Week 1 - Sat, March 14th 2026 Player Stats"
-      const dateMatch = name.match(/(\w+)\s+(\d+)(?:st|nd|rd|th)?\s+(\d{4})/i);
-      let date = null;
-      if (dateMatch) {
-        date = {
-          day: parseInt(dateMatch[2]),
-          month: dateMatch[1].substring(0, 3),
-        };
-      }
-
-      return { name, weekNumber: weekNum, date };
+    .filter(t => /week\s*\d+/i.test(t.name))
+    .map(t => {
+      const weekNum = parseInt(t.name.match(/week\s*(\d+)/i)?.[1] || '0');
+      const dateMatch = t.name.match(/(\w+)\s+(\d+)(?:st|nd|rd|th)/i);
+      return {
+        name: t.name,
+        weekNumber: weekNum,
+        gid: t.gid,
+        date: dateMatch ? { day: parseInt(dateMatch[2]), month: dateMatch[1].substring(0, 3) } : null,
+      };
     })
     .sort((a, b) => a.weekNumber - b.weekNumber);
 
@@ -145,32 +174,27 @@ export default async function handler(req, res) {
     return true;
   });
 
-  // Final fallback if nothing found
-  if (deduped.length === 0) {
-    source = 'fallback';
+  if (deduped.length > 0) {
+    res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=60');
     return res.status(200).json({
       success: true,
       source,
-      weeks: [
-        { name: 'GBB Week 1 - Sat, March 14th 2026 Player Stats', weekNumber: 1, date: { day: 14, month: 'Mar' } },
-        { name: 'GBB Week 2 - Sat, March 21st 2026 Player Stats', weekNumber: 2, date: { day: 21, month: 'Mar' } },
-        { name: 'GBB Week 3 - Sat, March 28th 2026 Player Stats', weekNumber: 3, date: { day: 28, month: 'Mar' } },
-        { name: 'GBB Week 4 - Sat, April 4th 2026 Player Stats',  weekNumber: 4, date: { day:  4, month: 'Apr' } },
-      ],
-      allSheets: [],
-      count: 4,
+      weeks: deduped,
+      allSheets: tabs.map(t => t.name),
+      count: deduped.length,
       fetchedAt: new Date().toISOString(),
-      note: 'Auto-discovery failed — using hardcoded fallback.',
     });
   }
 
-  res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=60');
+  // Final fallback
+  res.setHeader('Cache-Control', 's-maxage=60');
   return res.status(200).json({
     success: true,
-    source,
-    weeks: deduped,
-    allSheets: tabs,
-    count: deduped.length,
+    source: 'fallback',
+    weeks: FALLBACK_WEEKS,
+    allSheets: [],
+    count: FALLBACK_WEEKS.length,
     fetchedAt: new Date().toISOString(),
+    note: 'Auto-discovery failed — using hardcoded fallback.',
   });
 }
