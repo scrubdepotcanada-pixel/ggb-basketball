@@ -230,15 +230,16 @@ footer strong { color: var(--accent); }
 // CONFIG — set once, never touch again
 // ─────────────────────────────────────────────────────────────────
 
-// The ORIGINAL sheet ID (from the edit URL)
-const SHEET_ID = '1Gs9IzkezmssKoiCRNVbM78_xkIN5hXo8Fao3R3voJHo';
-
-// The published base URL (from the "Publish to web" dialog)
-// Used for CSV fetching — more reliable than the /pub endpoint with sheet ID
+// Published base URL
 const PUB_BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQxnfq6e_VLNn2t8SKm2CE8H-EIzLhstfs2fTPpcPZGkgMAc_5LvE2rV4R7hN5BybR42KvAu91o3Zx8';
 
-// Tab names must contain this string to be auto-discovered
-const WEEK_TAB_MATCH = 'GBB Week';
+// All known week GIDs — add new ones as your brother adds tabs each week
+const KNOWN_WEEKS = [
+  { gid: '1513965140', label: 'Week 1 — Saturday, March 14, 2026', date: { day: 14, month: 'Mar' } },
+  { gid: '40864786',   label: 'Week 2 — Saturday, March 21, 2026', date: { day: 21, month: 'Mar' } },
+  { gid: '587090763',  label: 'Week 3 — Saturday, March 28, 2026', date: { day: 28, month: 'Mar' } },
+  { gid: '1644843033', label: 'Week 4 — Saturday, April 4, 2026',  date: { day:  4, month: 'Apr' } },
+];
 
 const TEAMS = {
   'Valley Vipers': { color: '#c8c8c8', dot: '#aaaaaa' },
@@ -451,20 +452,10 @@ function parseCSV(txt) {
 // Each team's block size is fixed by the template your brother duplicates.
 // We detect team boundaries by counting player rows per team block.
 // ─────────────────────────────────────────────────────────────────
-function parseWeekRows(rows, tabName) {
-  // Friendly label
-  const label = tabName
-    .replace(/^GBB\s*/i, '')
-    .replace(/\s*Player Stats.*$/i, '')
-    .replace(/(\d+)(st|nd|rd|th)\b/gi, '$1')
-    .replace(/\s*-\s*/, ' — ')
-    .trim();
-
-  // Parse date for schedule display
-  const dateM = label.match(/(\w{3,})\s+(\d{1,2})[,\s]+(\d{4})/);
-  const date = dateM
-    ? { day: parseInt(dateM[2]), month: dateM[1].slice(0,3) }
-    : { day: '?', month: '???' };
+function parseWeekRows(rows, weekMeta) {
+  // weekMeta is a KNOWN_WEEKS entry: { gid, label, date }
+  const label = weekMeta.label;
+  const date  = weekMeta.date;
 
   // Find game headline row (contains "Week" + "vs")
   let games = [];
@@ -551,69 +542,41 @@ function parseGamesFromHeadline(headline) {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// MAIN REFRESH FUNCTION
+// MAIN REFRESH FUNCTION - fetches all KNOWN_WEEKS in parallel
 // ─────────────────────────────────────────────────────────────────
 async function refreshData() {
   const btn = document.getElementById('refreshBtn');
-  btn.disabled = true;
-  btn.classList.add('spinning');
-  setWeeksStatus('Scanning for week tabs...');
+  btn.disabled = true; btn.classList.add('spinning');
+  setWeeksStatus('Loading ' + KNOWN_WEEKS.length + ' weeks...');
 
-  try {
-    // 1. Auto-discover all GBB Week tabs
-    let tabs = [];
-    try {
-      tabs = await discoverTabsReliably();
-    } catch {
-      // fallback to gviz method
-      try { tabs = await discoverWeekTabs(); } catch {}
-    }
+  const results = await Promise.allSettled(
+    KNOWN_WEEKS.map(async w => {
+      const rows = await fetchTabCSV(w.gid);
+      return parseWeekRows(rows, w);
+    })
+  );
 
-    // Always include Week 1 as a known baseline if discovery finds nothing
-    if (tabs.length === 0) {
-      tabs = [{ name: 'GBB Week 1 - Sat, March 14th 2026 Player Stats', gid: '1513965140' }];
-    }
+  const fresh = results
+    .filter(r => r.status === 'fulfilled')
+    .map(r => r.value)
+    .filter(w => w.players.length > 0 || w.games.length > 0);
 
-    setWeeksStatus(`Found ${tabs.length} week tab${tabs.length !== 1 ? 's' : ''} — loading...`);
+  btn.disabled = false; btn.classList.remove('spinning');
 
-    // 2. Fetch all tabs in parallel
-    const results = await Promise.allSettled(
-      tabs.map(async tab => {
-        const rows = await fetchTabCSV(tab.gid);
-        return parseWeekRows(rows, tab.name);
-      })
-    );
-
-    // 3. Collect successful results with actual data
-    const fresh = results
-      .filter(r => r.status === 'fulfilled')
-      .map(r => r.value)
-      .filter(w => w.players.length > 0 || w.games.length > 0);
-
-    if (fresh.length > 0) {
-      weeksData = fresh;
-      usingLive = true;
-      renderAll();
-
-      const now = new Date();
-      document.getElementById('lastUpdated').textContent =
-        'Updated ' + now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-      setWeeksStatus(`${fresh.length} week${fresh.length>1?'s':''} loaded live from Google Sheets`);
-      toast(`${fresh.length} week${fresh.length>1?'s':''} loaded`, 'success');
-    } else {
-      toast('Sheet published but no data found yet', 'error');
-      setWeeksStatus('No week data found — try again after entering stats');
-    }
-
-  } catch (err) {
-    console.warn('Refresh error:', err);
-    toast('Could not load sheet — check connection', 'error');
+  if (fresh.length > 0) {
+    weeksData = fresh; usingLive = true; renderAll();
+    const now = new Date();
+    document.getElementById('lastUpdated').textContent =
+      'Updated ' + now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    setWeeksStatus(fresh.length + ' week' + (fresh.length>1?'s':'') + ' loaded live');
+    toast(fresh.length + ' week' + (fresh.length>1?'s':'') + ' loaded', 'success');
+  } else {
+    toast('Could not load sheet', 'error');
     setWeeksStatus('Using saved data');
   }
-
-  btn.disabled = false;
-  btn.classList.remove('spinning');
 }
+
+// DUMMY replaced function placeholder
 
 function setWeeksStatus(msg) {
   document.getElementById('weeksStatus').innerHTML =
