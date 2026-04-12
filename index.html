@@ -6,124 +6,141 @@
 <title>Goose Bay Basketball League 2026</title>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--black:#0a0a0f;--surface:#12121a;--card:#1a1a26;--border:rgba(255,255,255,0.08);--text:#f0ede8;--muted:#8a8799;--accent:#e8b84b;--accent-dim:rgba(232,184,75,0.15)}
-body{font-family:'Barlow',sans-serif;background:var(--black);color:var(--text);min-height:100vh;overflow-x:hidden}
-.hero{position:relative;background:var(--surface);border-bottom:1px solid var(--border);overflow:hidden}
-.hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse 60% 80% at 20% 50%,rgba(232,184,75,0.07) 0%,transparent 60%),radial-gradient(ellipse 40% 60% at 85% 30%,rgba(29,78,216,0.08) 0%,transparent 50%),repeating-linear-gradient(90deg,transparent,transparent 60px,rgba(255,255,255,0.018) 60px,rgba(255,255,255,0.018) 61px)}
-.hero-court{position:absolute;right:-80px;top:50%;transform:translateY(-50%);width:340px;height:340px;border:2px solid rgba(232,184,75,0.07);border-radius:50%;pointer-events:none}
-.hero-court::before{content:'';position:absolute;inset:35px;border:1px solid rgba(232,184,75,0.04);border-radius:50%}
-.hero-inner{position:relative;max-width:960px;margin:0 auto;padding:52px 28px 44px;display:flex;align-items:center;gap:32px;flex-wrap:wrap}
-.hero-logo{width:86px;height:86px;background:var(--accent);border-radius:18px;display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:900;color:var(--black);letter-spacing:-1px;flex-shrink:0;box-shadow:0 0 40px rgba(232,184,75,0.25)}
-.hero-text h1{font-family:'Barlow Condensed',sans-serif;font-size:clamp(34px,7vw,60px);font-weight:900;line-height:0.92;letter-spacing:-1px;text-transform:uppercase}
-.hero-text h1 em{color:var(--accent);font-style:normal}
-.hero-text p{margin-top:12px;font-size:13px;color:var(--muted);letter-spacing:2.5px;text-transform:uppercase;font-weight:500}
-.hero-actions{display:flex;align-items:center;gap:10px;margin-top:16px;flex-wrap:wrap}
-.live-badge{display:inline-flex;align-items:center;gap:8px;background:var(--accent-dim);border:1px solid rgba(232,184,75,0.3);color:var(--accent);font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:6px 14px;border-radius:5px}
-.live-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:blink 2s ease-in-out infinite;flex-shrink:0}
-#refreshBtn{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14);color:var(--text);font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:7px 16px;border-radius:5px;cursor:pointer;transition:background 0.2s,border-color 0.2s}
-#refreshBtn:hover{background:rgba(255,255,255,0.11);border-color:rgba(255,255,255,0.22)}
-#refreshBtn:disabled{opacity:0.4;cursor:not-allowed}
-#refreshBtn.spinning .spin-icon{animation:spin 0.7s linear infinite}
-.spin-icon{display:inline-block}
-#lastUpdated{font-size:11px;color:var(--muted);letter-spacing:1px}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
-@keyframes spin{to{transform:rotate(360deg)}}
-nav{background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
-.nav-inner{max-width:960px;margin:0 auto;display:flex;overflow-x:auto;scrollbar-width:none}
-.nav-inner::-webkit-scrollbar{display:none}
-.tab-btn{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);background:none;border:none;padding:17px 22px;cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent;transition:color 0.2s,border-color 0.2s}
-.tab-btn:hover{color:var(--text)}
-.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
-main{max-width:960px;margin:0 auto;padding:36px 28px 80px}
-.tab-panel{display:none}
-.tab-panel.active{display:block}
-.section-header{margin-bottom:28px}
-.section-header h2{font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px}
-.section-header p{font-size:13px;color:var(--muted);margin-top:5px}
-#toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--card);border:1px solid var(--border);color:var(--text);font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:600;letter-spacing:1px;padding:12px 24px;border-radius:8px;z-index:9999;transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1),opacity 0.35s;opacity:0;pointer-events:none;white-space:nowrap}
-#toast.show{transform:translateX(-50%) translateY(0);opacity:1}
-#toast.success{border-color:rgba(74,222,128,0.3);color:#4ade80}
-#toast.error{border-color:rgba(248,113,113,0.3);color:#f87171}
-#toast.info{border-color:rgba(232,184,75,0.3);color:var(--accent)}
-.loading-state{padding:48px;text-align:center;color:var(--muted);font-size:14px}
-.spinner{width:28px;height:28px;border:2px solid rgba(232,184,75,0.2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 14px}
-.table-wrap{border:1px solid var(--border);border-radius:14px;overflow:hidden}
-.standings-table{width:100%;border-collapse:collapse;font-size:14px}
-.standings-table thead tr{border-bottom:1px solid var(--border);background:rgba(255,255,255,0.02)}
-.standings-table th{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);padding:12px 16px;text-align:center}
-.standings-table th:nth-child(2){text-align:left}
-.standings-table tbody tr{border-bottom:1px solid rgba(255,255,255,0.04);transition:background 0.15s}
-.standings-table tbody tr:last-child{border-bottom:none}
-.standings-table tbody tr:hover{background:rgba(255,255,255,0.025)}
-.standings-table td{padding:16px;text-align:center}
-.standings-table td:nth-child(2){text-align:left}
-.rank-num{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;color:var(--muted)}
-.team-pill{display:inline-flex;align-items:center;gap:9px;font-weight:600;font-size:15px}
-.team-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;display:inline-block}
-.pct-wrap{display:flex;align-items:center;gap:10px;justify-content:center}
-.pct-bar-bg{width:64px;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden}
-.pct-bar{height:100%;border-radius:2px;background:var(--accent)}
-.stat-val{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800}
-.stat-muted{font-size:13px;color:var(--muted)}
-.week-section{margin-bottom:36px}
-.week-label{font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--accent);margin-bottom:14px;display:flex;align-items:center;gap:14px}
-.week-label::after{content:'';flex:1;height:1px;background:var(--border)}
-.game-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px 28px;margin-bottom:10px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:20px}
-.game-team{display:flex;flex-direction:column;gap:6px}
-.game-team.right{align-items:flex-end}
-.game-team-name{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;text-transform:uppercase}
-.result-badge{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:3px 9px;border-radius:4px;width:fit-content}
-.badge-w{background:rgba(34,197,94,0.15);color:#4ade80}
-.badge-l{background:rgba(239,68,68,0.1);color:#f87171}
-.score-center{display:flex;align-items:center;gap:12px;font-family:'Barlow Condensed',sans-serif}
-.big-score{font-size:42px;font-weight:900;line-height:1}
-.score-dash{font-size:24px;color:var(--muted)}
-.filter-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
-.filter-btn{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:7px 16px;border-radius:6px;border:1px solid var(--border);background:none;color:var(--muted);cursor:pointer;transition:all 0.15s}
-.filter-btn:hover,.filter-btn.active{background:var(--accent-dim);border-color:rgba(232,184,75,0.3);color:var(--accent)}
-.stats-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:14px}
-.stats-table{width:100%;border-collapse:collapse;font-size:14px;min-width:520px}
-.stats-table thead{background:rgba(255,255,255,0.025)}
-.stats-table th{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);padding:13px 18px;text-align:center;border-bottom:1px solid var(--border);cursor:pointer;user-select:none;white-space:nowrap}
-.stats-table th:first-child,.stats-table th:nth-child(2){text-align:left}
-.stats-table th:hover{color:var(--text)}
-.stats-table th.sorted{color:var(--accent)}
-.stats-table tbody tr{border-bottom:1px solid rgba(255,255,255,0.04);transition:background 0.15s}
-.stats-table tbody tr:last-child{border-bottom:none}
-.stats-table tbody tr:hover{background:rgba(255,255,255,0.025)}
-.stats-table td{padding:14px 18px;text-align:center}
-.stats-table td:first-child,.stats-table td:nth-child(2){text-align:left}
-.player-num{font-family:'Barlow Condensed',sans-serif;font-size:13px;color:var(--muted);font-weight:700;margin-right:6px}
-.dnp-tag{font-size:10px;color:var(--muted);letter-spacing:1px;margin-left:8px}
-.stat-hero{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900;color:var(--accent)}
-.stat-num{font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700}
-.sched-list{display:flex;flex-direction:column;gap:12px}
-.sched-item{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 26px;display:flex;align-items:center;gap:24px}
-.sched-date{text-align:center;min-width:48px;flex-shrink:0}
-.sched-day{font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:900;line-height:1;color:var(--accent)}
-.sched-month{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
-.sched-divider{width:1px;height:42px;background:var(--border);flex-shrink:0}
-.sched-games{flex:1;display:flex;flex-direction:column;gap:8px}
-.sched-game{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600;flex-wrap:wrap}
-.sched-game+.sched-game{border-top:1px solid rgba(255,255,255,0.04);padding-top:8px}
-.vs-chip{font-size:10px;font-weight:700;letter-spacing:1px;color:var(--muted);background:rgba(255,255,255,0.06);padding:2px 7px;border-radius:3px}
-.game-score-inline{font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;color:var(--accent);margin-left:4px}
-.status-pill{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:3px 9px;border-radius:4px;margin-left:auto;flex-shrink:0}
-.s-played{background:rgba(34,197,94,0.12);color:#4ade80}
-.s-upcoming{background:rgba(232,184,75,0.12);color:var(--accent)}
-.teams-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
-.team-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px;border-top:3px solid}
-.team-label{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;gap:8px}
-.team-pip{width:9px;height:9px;border-radius:50%}
-.team-big-name{font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;text-transform:uppercase}
-.info-note{margin-top:20px;padding:14px 18px;background:rgba(232,184,75,0.05);border:1px solid rgba(232,184,75,0.15);border-radius:8px;font-size:12px;color:var(--muted);display:flex;align-items:flex-start;gap:10px;line-height:1.6}
-.info-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:5px;animation:blink 2s ease-in-out infinite}
-footer{border-top:1px solid var(--border);padding:28px;text-align:center;font-size:12px;color:var(--muted);letter-spacing:1px}
-footer strong{color:var(--accent)}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --black: #0a0a0f; --surface: #12121a; --card: #1a1a26;
+  --border: rgba(255,255,255,0.08); --text: #f0ede8; --muted: #8a8799;
+  --accent: #e8b84b; --accent-dim: rgba(232,184,75,0.15);
+}
+body { font-family: 'Barlow', sans-serif; background: var(--black); color: var(--text); min-height: 100vh; overflow-x: hidden; }
+
+.hero { position: relative; background: var(--surface); border-bottom: 1px solid var(--border); overflow: hidden; }
+.hero-bg { position: absolute; inset: 0; background: radial-gradient(ellipse 60% 80% at 20% 50%, rgba(232,184,75,0.07) 0%, transparent 60%), radial-gradient(ellipse 40% 60% at 85% 30%, rgba(29,78,216,0.08) 0%, transparent 50%), repeating-linear-gradient(90deg, transparent, transparent 60px, rgba(255,255,255,0.018) 60px, rgba(255,255,255,0.018) 61px); }
+.hero-court { position: absolute; right: -80px; top: 50%; transform: translateY(-50%); width: 340px; height: 340px; border: 2px solid rgba(232,184,75,0.07); border-radius: 50%; pointer-events: none; }
+.hero-court::before { content: ''; position: absolute; inset: 35px; border: 1px solid rgba(232,184,75,0.04); border-radius: 50%; }
+.hero-inner { position: relative; max-width: 960px; margin: 0 auto; padding: 52px 28px 44px; display: flex; align-items: center; gap: 32px; flex-wrap: wrap; }
+.hero-logo { width: 86px; height: 86px; background: var(--accent); border-radius: 18px; display: flex; align-items: center; justify-content: center; font-family: 'Barlow Condensed', sans-serif; font-size: 30px; font-weight: 900; color: var(--black); letter-spacing: -1px; flex-shrink: 0; box-shadow: 0 0 40px rgba(232,184,75,0.25); }
+.hero-text h1 { font-family: 'Barlow Condensed', sans-serif; font-size: clamp(34px,7vw,60px); font-weight: 900; line-height: 0.92; letter-spacing: -1px; text-transform: uppercase; }
+.hero-text h1 em { color: var(--accent); font-style: normal; }
+.hero-text p { margin-top: 12px; font-size: 13px; color: var(--muted); letter-spacing: 2.5px; text-transform: uppercase; font-weight: 500; }
+.hero-actions { display: flex; align-items: center; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+.live-badge { display: inline-flex; align-items: center; gap: 8px; background: var(--accent-dim); border: 1px solid rgba(232,184,75,0.3); color: var(--accent); font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; padding: 6px 14px; border-radius: 5px; }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: blink 2s ease-in-out infinite; flex-shrink: 0; }
+
+#refreshBtn { display: inline-flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); color: var(--text); font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; padding: 7px 16px; border-radius: 5px; cursor: pointer; transition: background 0.2s, border-color 0.2s; }
+#refreshBtn:hover { background: rgba(255,255,255,0.11); border-color: rgba(255,255,255,0.22); }
+#refreshBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+#refreshBtn.spinning .spin-icon { animation: spin 0.7s linear infinite; }
+.spin-icon { display: inline-block; }
+#lastUpdated { font-size: 11px; color: var(--muted); letter-spacing: 1px; }
+
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+nav { background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+.nav-inner { max-width: 960px; margin: 0 auto; display: flex; overflow-x: auto; scrollbar-width: none; }
+.nav-inner::-webkit-scrollbar { display: none; }
+.tab-btn { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); background: none; border: none; padding: 17px 22px; cursor: pointer; white-space: nowrap; border-bottom: 2px solid transparent; transition: color 0.2s, border-color 0.2s; }
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+main { max-width: 960px; margin: 0 auto; padding: 36px 28px 80px; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+.section-header { margin-bottom: 28px; }
+.section-header h2 { font-family: 'Barlow Condensed', sans-serif; font-size: 30px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
+.section-header p { font-size: 13px; color: var(--muted); margin-top: 5px; }
+
+#toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--card); border: 1px solid var(--border); color: var(--text); font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 600; letter-spacing: 1px; padding: 12px 24px; border-radius: 8px; z-index: 9999; transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.35s; opacity: 0; pointer-events: none; white-space: nowrap; }
+#toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+#toast.success { border-color: rgba(74,222,128,0.3); color: #4ade80; }
+#toast.error { border-color: rgba(248,113,113,0.3); color: #f87171; }
+#toast.info { border-color: rgba(232,184,75,0.3); color: var(--accent); }
+
+.loading-state { padding: 48px; text-align: center; color: var(--muted); font-size: 14px; }
+.spinner { width: 28px; height: 28px; border: 2px solid rgba(232,184,75,0.2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 14px; }
+
+.table-wrap { border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+.standings-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.standings-table thead tr { border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02); }
+.standings-table th { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); padding: 12px 16px; text-align: center; }
+.standings-table th:nth-child(2) { text-align: left; }
+.standings-table tbody tr { border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.15s; }
+.standings-table tbody tr:last-child { border-bottom: none; }
+.standings-table tbody tr:hover { background: rgba(255,255,255,0.025); }
+.standings-table td { padding: 16px; text-align: center; }
+.standings-table td:nth-child(2) { text-align: left; }
+.rank-num { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 700; color: var(--muted); }
+.team-pill { display: inline-flex; align-items: center; gap: 9px; font-weight: 600; font-size: 15px; }
+.team-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+.pct-wrap { display: flex; align-items: center; gap: 10px; justify-content: center; }
+.pct-bar-bg { width: 64px; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
+.pct-bar { height: 100%; border-radius: 2px; background: var(--accent); }
+.stat-val { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 800; }
+.stat-muted { font-size: 13px; color: var(--muted); }
+
+.week-section { margin-bottom: 36px; }
+.week-label { font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--accent); margin-bottom: 14px; display: flex; align-items: center; gap: 14px; }
+.week-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.game-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 22px 28px; margin-bottom: 10px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 20px; }
+.game-team { display: flex; flex-direction: column; gap: 6px; }
+.game-team.right { align-items: flex-end; }
+.game-team-name { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 800; text-transform: uppercase; }
+.result-badge { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; padding: 3px 9px; border-radius: 4px; width: fit-content; }
+.badge-w { background: rgba(34,197,94,0.15); color: #4ade80; }
+.badge-l { background: rgba(239,68,68,0.1); color: #f87171; }
+.score-center { display: flex; align-items: center; gap: 12px; font-family: 'Barlow Condensed', sans-serif; }
+.big-score { font-size: 42px; font-weight: 900; line-height: 1; }
+.score-dash { font-size: 24px; color: var(--muted); }
+
+.filter-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+.filter-btn { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; padding: 7px 16px; border-radius: 6px; border: 1px solid var(--border); background: none; color: var(--muted); cursor: pointer; transition: all 0.15s; }
+.filter-btn:hover, .filter-btn.active { background: var(--accent-dim); border-color: rgba(232,184,75,0.3); color: var(--accent); }
+.stats-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 14px; }
+.stats-table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 520px; }
+.stats-table thead { background: rgba(255,255,255,0.025); }
+.stats-table th { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); padding: 13px 18px; text-align: center; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; white-space: nowrap; }
+.stats-table th:first-child, .stats-table th:nth-child(2) { text-align: left; }
+.stats-table th:hover { color: var(--text); }
+.stats-table th.sorted { color: var(--accent); }
+.stats-table tbody tr { border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.15s; }
+.stats-table tbody tr:last-child { border-bottom: none; }
+.stats-table tbody tr:hover { background: rgba(255,255,255,0.025); }
+.stats-table td { padding: 14px 18px; text-align: center; }
+.stats-table td:first-child, .stats-table td:nth-child(2) { text-align: left; }
+.player-num { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; color: var(--muted); font-weight: 700; margin-right: 6px; }
+.dnp-tag { font-size: 10px; color: var(--muted); letter-spacing: 1px; margin-left: 8px; }
+.stat-hero { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 900; color: var(--accent); }
+.stat-num { font-family: 'Barlow Condensed', sans-serif; font-size: 17px; font-weight: 700; }
+
+.sched-list { display: flex; flex-direction: column; gap: 12px; }
+.sched-item { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px 26px; display: flex; align-items: center; gap: 24px; }
+.sched-date { text-align: center; min-width: 48px; flex-shrink: 0; }
+.sched-day { font-family: 'Barlow Condensed', sans-serif; font-size: 30px; font-weight: 900; line-height: 1; color: var(--accent); }
+.sched-month { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
+.sched-divider { width: 1px; height: 42px; background: var(--border); flex-shrink: 0; }
+.sched-games { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.sched-game { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; flex-wrap: wrap; }
+.sched-game + .sched-game { border-top: 1px solid rgba(255,255,255,0.04); padding-top: 8px; }
+.vs-chip { font-size: 10px; font-weight: 700; letter-spacing: 1px; color: var(--muted); background: rgba(255,255,255,0.06); padding: 2px 7px; border-radius: 3px; }
+.game-score-inline { font-family: 'Barlow Condensed', sans-serif; font-size: 15px; font-weight: 800; color: var(--accent); margin-left: 4px; }
+.status-pill { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; padding: 3px 9px; border-radius: 4px; margin-left: auto; flex-shrink: 0; }
+.s-played { background: rgba(34,197,94,0.12); color: #4ade80; }
+.s-upcoming { background: rgba(232,184,75,0.12); color: var(--accent); }
+
+.teams-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+.team-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 24px; border-top: 3px solid; }
+.team-label { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+.team-pip { width: 9px; height: 9px; border-radius: 50%; }
+.team-big-name { font-family: 'Barlow Condensed', sans-serif; font-size: 24px; font-weight: 900; text-transform: uppercase; }
+.info-note { margin-top: 20px; padding: 14px 18px; background: rgba(232,184,75,0.05); border: 1px solid rgba(232,184,75,0.15); border-radius: 8px; font-size: 12px; color: var(--muted); display: flex; align-items: flex-start; gap: 10px; line-height: 1.6; }
+.info-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: 5px; animation: blink 2s ease-in-out infinite; }
+footer { border-top: 1px solid var(--border); padding: 28px; text-align: center; font-size: 12px; color: var(--muted); letter-spacing: 1px; }
+footer strong { color: var(--accent); }
 </style>
 </head>
 <body>
+
 <div class="hero">
   <div class="hero-bg"></div>
   <div class="hero-court"></div>
@@ -134,13 +151,16 @@ footer strong{color:var(--accent)}
       <p>Goose Bay, NL &mdash; Season 2026</p>
       <div class="hero-actions">
         <div class="live-badge"><span class="live-dot"></span>Live Stats</div>
-        <button id="refreshBtn" onclick="refreshData()"><span class="spin-icon">&#8635;</span> Refresh Stats</button>
+        <button id="refreshBtn" onclick="refreshData()">
+          <span class="spin-icon">↻</span> Refresh Stats
+        </button>
         <span id="lastUpdated"></span>
       </div>
       <div style="margin-top:8px;" id="weeksStatus"></div>
     </div>
   </div>
 </div>
+
 <nav>
   <div class="nav-inner">
     <button class="tab-btn active" data-tab="standings">Standings</button>
@@ -150,6 +170,7 @@ footer strong{color:var(--accent)}
     <button class="tab-btn" data-tab="teams">Teams</button>
   </div>
 </nav>
+
 <main>
   <div id="tab-standings" class="tab-panel active">
     <div class="section-header"><h2>League Standings</h2><p>Win/loss record across all game days</p></div>
@@ -160,7 +181,7 @@ footer strong{color:var(--accent)}
     <div id="scores-container"><div class="loading-state"><div class="spinner"></div>Loading...</div></div>
   </div>
   <div id="tab-stats" class="tab-panel">
-    <div class="section-header"><h2>Player Stats</h2><p>Season totals &mdash; click any column to sort</p></div>
+    <div class="section-header"><h2>Player Stats</h2><p>Season totals — click any column to sort</p></div>
     <div class="filter-row">
       <button class="filter-btn active" data-filter="all">All Players</button>
       <button class="filter-btn" data-filter="Valley Vipers">Valley Vipers</button>
@@ -171,35 +192,53 @@ footer strong{color:var(--accent)}
     <div id="stats-container"><div class="loading-state"><div class="spinner"></div>Loading...</div></div>
   </div>
   <div id="tab-schedule" class="tab-panel">
-    <div class="section-header"><h2>Season Schedule</h2><p>Every Saturday &mdash; Goose Bay, NL</p></div>
+    <div class="section-header"><h2>Season Schedule</h2><p>Every Saturday — Goose Bay, NL</p></div>
     <div id="schedule-container"><div class="loading-state"><div class="spinner"></div>Loading...</div></div>
   </div>
   <div id="tab-teams" class="tab-panel">
     <div class="section-header"><h2>The Teams</h2><p>Four squads, one city</p></div>
     <div class="teams-grid">
-      <div class="team-card" style="border-top-color:#aaa;"><div class="team-label"><span class="team-pip" style="background:#aaa;"></span>Black</div><div class="team-big-name" style="color:#c8c8c8;">Valley Vipers</div></div>
-      <div class="team-card" style="border-top-color:#b91c1c;"><div class="team-label"><span class="team-pip" style="background:#b91c1c;"></span>Red</div><div class="team-big-name" style="color:#fca5a5;">Hognation</div></div>
-      <div class="team-card" style="border-top-color:#1d4ed8;"><div class="team-label"><span class="team-pip" style="background:#1d4ed8;"></span>Blue</div><div class="team-big-name" style="color:#93c5fd;">Fili Hustlers</div></div>
-      <div class="team-card" style="border-top-color:#ca8a04;"><div class="team-label"><span class="team-pip" style="background:#ca8a04;"></span>Yellow</div><div class="team-big-name" style="color:#fde047;">Torngat</div></div>
+      <div class="team-card" style="border-top-color:#aaa;">
+        <div class="team-label"><span class="team-pip" style="background:#aaa;"></span>Black</div>
+        <div class="team-big-name" style="color:#c8c8c8;">Valley Vipers</div>
+      </div>
+      <div class="team-card" style="border-top-color:#b91c1c;">
+        <div class="team-label"><span class="team-pip" style="background:#b91c1c;"></span>Red</div>
+        <div class="team-big-name" style="color:#fca5a5;">Hognation</div>
+      </div>
+      <div class="team-card" style="border-top-color:#1d4ed8;">
+        <div class="team-label"><span class="team-pip" style="background:#1d4ed8;"></span>Blue</div>
+        <div class="team-big-name" style="color:#93c5fd;">Fili Hustlers</div>
+      </div>
+      <div class="team-card" style="border-top-color:#ca8a04;">
+        <div class="team-label"><span class="team-pip" style="background:#ca8a04;"></span>Yellow</div>
+        <div class="team-big-name" style="color:#fde047;">Torngat</div>
+      </div>
     </div>
-    <div class="info-note" style="margin-top:24px;"><div class="info-dot"></div>
-      <span>When your brother adds a new week tab, just hit <strong style="color:var(--accent)">Refresh Stats</strong> &mdash; the site loads all weeks automatically.</span>
+    <div class="info-note" style="margin-top:24px;">
+      <div class="info-dot"></div>
+      <span>When your brother adds a new week tab named <strong style="color:var(--accent)">"GBB Week..."</strong> to Google Sheets, hit Refresh Stats — the site auto-discovers and loads it. No code changes ever needed.</span>
     </div>
   </div>
 </main>
+
 <footer><strong>GBB</strong> &mdash; Goose Bay Basketball League 2026 &mdash; Goose Bay, Labrador, NL</footer>
 <div id="toast"></div>
+
 <script>
+// ─────────────────────────────────────────────────────────────────
+// CONFIG — set once, never touch again
+// ─────────────────────────────────────────────────────────────────
+
+// The ORIGINAL sheet ID (from the edit URL)
+const SHEET_ID = '1Gs9IzkezmssKoiCRNVbM78_xkIN5hXo8Fao3R3voJHo';
+
+// The published base URL (from the "Publish to web" dialog)
+// Used for CSV fetching — more reliable than the /pub endpoint with sheet ID
 const PUB_BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQxnfq6e_VLNn2t8SKm2CE8H-EIzLhstfs2fTPpcPZGkgMAc_5LvE2rV4R7hN5BybR42KvAu91o3Zx8';
 
-// All known week tabs — add new GIDs here as season progresses
-// OR just hit Refresh Stats and new tabs auto-load if GID is added
-const KNOWN_WEEKS = [
-  { gid: '1513965140', label: 'Week 1 — Saturday, March 14, 2026',  date: { day: 14, month: 'Mar' } },
-  { gid: '40864786',   label: 'Week 2 — Saturday, March 21, 2026',  date: { day: 21, month: 'Mar' } },
-  { gid: '587090763',  label: 'Week 3 — Saturday, March 28, 2026',  date: { day: 28, month: 'Mar' } },
-  { gid: '1644843033', label: 'Week 4 — Saturday, April 4, 2026',   date: { day:  4, month: 'Apr' } },
-];
+// Tab names must contain this string to be auto-discovered
+const WEEK_TAB_MATCH = 'GBB Week';
 
 const TEAMS = {
   'Valley Vipers': { color: '#c8c8c8', dot: '#aaaaaa' },
@@ -208,13 +247,18 @@ const TEAMS = {
   'Torngat':       { color: '#fde047', dot: '#ca8a04' },
 };
 
+// ─────────────────────────────────────────────────────────────────
+// FALLBACK DATA — shown immediately while live fetch runs
+// ─────────────────────────────────────────────────────────────────
 const FALLBACK = [{
-  label: 'Week 1 — Saturday, March 14, 2026', date: { day: 14, month: 'Mar' },
+  label: 'Week 1 — Saturday, March 14, 2026',
+  date: { day: 14, month: 'Mar' },
   games: [
     { home:'Torngat', homeScore:null, away:'Valley Vipers', awayScore:null, homeWon:true },
     { home:'Hognation', homeScore:41, away:'Fili Hustlers', awayScore:54 },
   ],
   players: [
+    // Hognation
     {name:'James Dempster',num:'',team:'Hognation',pts:0,fouls:0,gp:0},
     {name:'Jack Leonard',num:'',team:'Hognation',pts:0,fouls:0,gp:0},
     {name:'Alex Barney',num:'',team:'Hognation',pts:0,fouls:0,gp:0},
@@ -226,6 +270,7 @@ const FALLBACK = [{
     {name:'Breck Merser',num:'',team:'Hognation',pts:0,fouls:0,gp:0},
     {name:'Max Montague',num:'',team:'Hognation',pts:0,fouls:0,gp:0},
     {name:'Carlito Hillier',num:'',team:'Hognation',pts:0,fouls:0,gp:0},
+    // Fili Hustlers
     {name:'Chris Bennett',num:'0',team:'Fili Hustlers',pts:5,fouls:0,gp:1},
     {name:'Benjamin Ralph',num:'',team:'Fili Hustlers',pts:0,fouls:0,gp:0,dnp:true},
     {name:'Cameron Tobin',num:'45',team:'Fili Hustlers',pts:8,fouls:0,gp:1},
@@ -233,201 +278,569 @@ const FALLBACK = [{
     {name:'Harley Vera',num:'5',team:'Fili Hustlers',pts:12,fouls:1,gp:1},
     {name:'Labi Laporte',num:'32',team:'Fili Hustlers',pts:6,fouls:1,gp:1},
     {name:'Ritchie Stokes',num:'',team:'Fili Hustlers',pts:0,fouls:0,gp:0,dnp:true},
+    {name:'Caleb Strugnell',num:'',team:'Fili Hustlers',pts:0,fouls:0,gp:0,dnp:true},
+    {name:'Rayan Seghaier',num:'9',team:'Fili Hustlers',pts:2,fouls:0,gp:1},
+    {name:'Humphrey Kiwanuka',num:'',team:'Fili Hustlers',pts:0,fouls:0,gp:0,dnp:true},
+    {name:'Keegan Blake',num:'25',team:'Fili Hustlers',pts:3,fouls:0,gp:1},
+    {name:'Austin Strom',num:'40',team:'Fili Hustlers',pts:3,fouls:1,gp:1},
+    // Valley Vipers
+    {name:'Yaniv Koblentz',num:'',team:'Valley Vipers',pts:0,fouls:0,gp:0},
+    {name:'Kyle Decker',num:'',team:'Valley Vipers',pts:0,fouls:0,gp:0},
+    {name:'Riley Gregorie',num:'',team:'Valley Vipers',pts:0,fouls:0,gp:0},
+    {name:'Neko Butt',num:'',team:'Valley Vipers',pts:0,fouls:0,gp:0},
+    {name:'Nathan Ferquet',num:'',team:'Valley Vipers',pts:0,fouls:0,gp:0},
+    {name:'Cali Morgan',num:'',team:'Valley Vipers',pts:0,fouls:0,gp:0},
+    {name:'Enrixel Magallanes',num:'',team:'Valley Vipers',pts:0,fouls:0,gp:0},
+    {name:'Riley Spence',num:'',team:'Valley Vipers',pts:0,fouls:0,gp:0},
+    {name:'Brady Pittmann',num:'',team:'Valley Vipers',pts:0,fouls:0,gp:0},
+    {name:'Ayden Sponagle',num:'',team:'Valley Vipers',pts:0,fouls:0,gp:0},
+    {name:'Logan Lyal',num:'',team:'Valley Vipers',pts:0,fouls:0,gp:0},
+    {name:'Riley Newman',num:'',team:'Valley Vipers',pts:0,fouls:0,gp:0},
+    // Torngat
+    {name:'Jester Reynales',num:'3',team:'Torngat',pts:7,fouls:0,gp:1},
+    {name:'Eric Canlas',num:'14',team:'Torngat',pts:7,fouls:0,gp:1},
+    {name:'Ck Canlas',num:'44',team:'Torngat',pts:14,fouls:0,gp:1},
+    {name:'Paolo Reyes',num:'',team:'Torngat',pts:0,fouls:0,gp:0,dnp:true},
+    {name:'Daryl Cayanan',num:'22',team:'Torngat',pts:11,fouls:0,gp:1},
+    {name:'Juls Cayanan',num:'11',team:'Torngat',pts:8,fouls:0,gp:1},
+    {name:'Lemuel Ayuban',num:'50',team:'Torngat',pts:0,fouls:0,gp:1},
+    {name:'Rodel Ayuban',num:'0',team:'Torngat',pts:0,fouls:0,gp:1},
+    {name:'Pope Guim',num:'',team:'Torngat',pts:0,fouls:0,gp:0,dnp:true},
+    {name:'Nick Esguerra',num:'',team:'Torngat',pts:0,fouls:0,gp:0,dnp:true},
+    {name:'Nathan Timbang',num:'7',team:'Torngat',pts:7,fouls:0,gp:1},
   ]
 }];
 
-let weeksData=[...FALLBACK],usingLive=false,sortCol='pts',sortAsc=false,activeFilter='all';
+// ─────────────────────────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────────────────────────
+let weeksData = [...FALLBACK];
+let usingLive = false;
+let sortCol = 'pts', sortAsc = false, activeFilter = 'all';
 
-async function fetchCSV(gid){
-  const url=`${PUB_BASE}/pub?single=true&output=csv&gid=${gid}&t=${Date.now()}`;
-  const res=await fetch(url);
-  if(!res.ok)throw new Error('HTTP '+res.status);
-  const txt=await res.text();
-  if(txt.includes('<HTML>')||txt.includes('<!DOCTYPE'))throw new Error('Got HTML not CSV');
-  return parseCSV(txt);
+// ─────────────────────────────────────────────────────────────────
+// STEP 1: AUTO-DISCOVER WEEK TABS
+//
+// Strategy: Google Sheets exposes sheet metadata via the gviz/tq
+// endpoint. The response is JSONP — we strip the callback wrapper
+// and parse the JSON. The table description includes sheet names
+// but NOT gids directly. So we use a second trick: fetch the
+// pubhtml page which embeds sheet names + gids in its navigation.
+//
+// Since pubhtml is a JS-rendered SPA, we instead rely on the
+// ORIGINAL sheet's gviz endpoint which DOES return sheet metadata
+// including sheet names + gids in a parseable format.
+// ─────────────────────────────────────────────────────────────────
+async function discoverWeekTabs() {
+  // The gviz/tq endpoint returns JSONP with sheet info embedded
+  // We fetch with no query so it returns metadata about the first sheet,
+  // but crucially the response includes all sheet names in the JSON wrapper
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&t=${Date.now()}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('gviz fetch failed: ' + res.status);
+  const raw = await res.text();
+
+  // Strip the JSONP wrapper: google.visualization.Query.setResponse({...});
+  const jsonStr = raw.match(/\{.*\}/s)?.[0];
+  if (!jsonStr) throw new Error('Could not parse gviz response');
+  const data = JSON.parse(jsonStr);
+
+  // Sheet names are in data.table... but gids aren't directly there.
+  // However, the raw response text contains sheet info in a different field.
+  // Let's also check the full response for sheet tab data.
+
+  // Extract from the raw JSONP — Google embeds tab info like:
+  // "sheetName":"GBB Week 1...","sheetId":1513965140
+  const tabMatches = [...raw.matchAll(/"sheetId"\s*:\s*(\d+)[^}]*?"sheetName"\s*:\s*"([^"]+)"/g)];
+  const altMatches = [...raw.matchAll(/"sheetName"\s*:\s*"([^"]+)"[^}]*?"sheetId"\s*:\s*(\d+)/g)];
+
+  const tabs = [];
+  const seen = new Set();
+
+  for (const m of [...tabMatches, ...altMatches]) {
+    const gid  = m[1].length > 5 ? m[1] : m[2];
+    const name = m[1].length > 5 ? m[2] : m[1];
+    if (name.includes(WEEK_TAB_MATCH) && !seen.has(gid)) {
+      seen.add(gid);
+      tabs.push({ name, gid });
+    }
+  }
+
+  // Fallback: try fetching each known gid from the URL hash
+  // (We know Week 1's gid from the screenshot URL)
+  if (tabs.length === 0) {
+    tabs.push({ name: 'GBB Week 1 - Sat, March 14th 2026 Player Stats', gid: '1513965140' });
+    // Then probe for more tabs by trying a range of gids
+    // (Not ideal — see below for the better approach)
+  }
+
+  return tabs;
 }
 
-function parseCSV(txt){
-  return txt.split('\n').map(line=>{
-    const cols=[];let inQ=false,cur='';
-    for(const c of line){
-      if(c==='"')inQ=!inQ;
-      else if(c===','&&!inQ){cols.push(cur.trim());cur='';}
-      else cur+=c;
+// ─────────────────────────────────────────────────────────────────
+// BETTER DISCOVERY: Fetch the sheet's public HTML index
+// Google publishes a list of sheets at /pub?rm=minimal
+// which includes tab names and gids in the HTML source
+// ─────────────────────────────────────────────────────────────────
+async function discoverTabsReliably() {
+  // This endpoint returns the sheet navigation HTML with gids
+  const url = `${PUB_BASE}/pub?rm=minimal&t=${Date.now()}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('pub fetch failed');
+  const html = await res.text();
+
+  const tabs = [];
+  const seen = new Set();
+
+  // Pattern 1: id="s1513965140" or similar with tab name nearby
+  const re1 = /id="s(\d{5,})"[^>]*>([^<]*GBB Week[^<]*)</g;
+  let m;
+  while ((m = re1.exec(html)) !== null) {
+    if (!seen.has(m[1])) { seen.add(m[1]); tabs.push({ gid: m[1], name: m[2].trim() }); }
+  }
+
+  // Pattern 2: gid in href + tab name
+  const re2 = /gid=(\d{5,})[^"]*"[^>]*>\s*<[^>]*>\s*([^<]*GBB Week[^<]*)</g;
+  while ((m = re2.exec(html)) !== null) {
+    if (!seen.has(m[1])) { seen.add(m[1]); tabs.push({ gid: m[1], name: m[2].trim() }); }
+  }
+
+  // Pattern 3: data attributes
+  const re3 = /data-(?:id|gid)="(\d{5,})"[^>]*>\s*(?:<[^>]*>)?\s*([^<]*GBB Week[^<]*)</g;
+  while ((m = re3.exec(html)) !== null) {
+    if (!seen.has(m[1])) { seen.add(m[1]); tabs.push({ gid: m[1], name: m[2].trim() }); }
+  }
+
+  return tabs;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// STEP 2: FETCH ONE TAB AS CSV
+// Uses the published /pub?gid=... endpoint
+// ─────────────────────────────────────────────────────────────────
+async function fetchTabCSV(gid) {
+  // Try published URL first (works once sheet is published to web)
+  const url = `${PUB_BASE}/pub?single=true&output=csv&gid=${gid}&t=${Date.now()}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('CSV fetch failed for gid ' + gid);
+  return parseCSV(await res.text());
+}
+
+function parseCSV(txt) {
+  return txt.split('\n').map(line => {
+    const cols = []; let inQ = false, cur = '';
+    for (const c of line) {
+      if (c === '"') inQ = !inQ;
+      else if (c === ',' && !inQ) { cols.push(cur.trim()); cur = ''; }
+      else cur += c;
     }
     cols.push(cur.trim());
     return cols;
   });
 }
 
-function parseWeek(rows,meta){
-  const teamNames=rows.slice(2,6).map(r=>(r[0]||'').replace(/^(Black|Red|Blue|Yellow)\s*[-]\s*/i,'').trim()).filter(Boolean);
-  let games=[];
-  for(const row of rows){
-    const cell=row[0]||'';
-    if(/week\s*\d/i.test(cell)&&/\bvs\b/i.test(cell)){
-      const parts=cell.split(/\band\b/i);
-      for(const part of parts){
-        const sM=part.match(/([A-Za-z ]+?)\s+(\d+)\s+vs\.?\s+([A-Za-z ]+?)\s+(\d+)/i);
-        if(sM){games.push({home:sM[1].trim(),homeScore:+sM[2],away:sM[3].trim(),awayScore:+sM[4]});continue;}
-        const wM=part.match(/([A-Za-z ]+?)\s+(W|L)\s+vs\.?\s+([A-Za-z ]+?)\s+(W|L)/i);
-        if(wM)games.push({home:wM[1].trim(),homeScore:null,away:wM[3].trim(),awayScore:null,homeWon:wM[2].toUpperCase()==='W'});
-      }
+// ─────────────────────────────────────────────────────────────────
+// STEP 3: PARSE ONE WEEK TAB'S CSV
+//
+// Sheet column layout (confirmed from live CSV):
+//   col 0 = Player name  col 1 = PTS  col 2 = Fouls  col 3 = FTA
+//   col 4 = (empty)      col 5 = (empty)              col 6 = Played / DNP
+//
+// Team blocks run continuously — no blank rows between them.
+// Order is always: Hognation → Fili Hustlers → Valley Vipers → Torngat
+// Each team's block size is fixed by the template your brother duplicates.
+// We detect team boundaries by counting player rows per team block.
+// ─────────────────────────────────────────────────────────────────
+function parseWeekRows(rows, tabName) {
+  // Friendly label
+  const label = tabName
+    .replace(/^GBB\s*/i, '')
+    .replace(/\s*Player Stats.*$/i, '')
+    .replace(/(\d+)(st|nd|rd|th)\b/gi, '$1')
+    .replace(/\s*-\s*/, ' — ')
+    .trim();
+
+  // Parse date for schedule display
+  const dateM = label.match(/(\w{3,})\s+(\d{1,2})[,\s]+(\d{4})/);
+  const date = dateM
+    ? { day: parseInt(dateM[2]), month: dateM[1].slice(0,3) }
+    : { day: '?', month: '???' };
+
+  // Find game headline row (contains "Week" + "vs")
+  let games = [];
+  for (const row of rows) {
+    const cell = row[0] || '';
+    if (/week\s*\d/i.test(cell) && /\bvs\b/i.test(cell)) {
+      games = parseGamesFromHeadline(cell);
       break;
     }
   }
-  const hIdx=rows.findIndex(r=>/player.*stat/i.test(r[0]||''));
-  if(hIdx===-1)return{...meta,games,players:[]};
-  const players=[];let tIdx=0;
-  for(let i=hIdx+1;i<rows.length;i++){
-    const row=rows[i];const cell=(row[0]||'').trim();
-    if(!cell){tIdx=Math.min(tIdx+1,teamNames.length-1);continue;}
-    if(/player|week|total|^pts$/i.test(cell))continue;
-    const nM=cell.match(/^#?(\d+)\s+(.+)/);
-    const num=nM?nM[1]:'',name=nM?nM[2].trim():cell;
-    const pR=(row[1]||'').trim(),fR=(row[2]||'').trim(),gR=(row[3]||'').trim();
-    const isDNP=/dnp/i.test(pR)||/dnp/i.test(gR);
-    players.push({name,num,team:teamNames[tIdx]||'Unknown',pts:parseInt(pR)||0,fouls:parseInt(fR)||0,gp:parseInt(gR)||0,dnp:isDNP});
+
+  // Find player header row (row 13 in sheet = "Players Stats, PTS, Fouls...")
+  const headerIdx = rows.findIndex(r => /player.*stat/i.test(r[0]||''));
+  if (headerIdx === -1) return { label, date, games, players: [] };
+
+  // Collect all player rows after the header (skip truly empty rows)
+  const playerRows = [];
+  for (let i = headerIdx + 1; i < rows.length; i++) {
+    const cell = (rows[i][0]||'').trim();
+    if (!cell) continue; // skip blank rows
+    if (/^players?\s*stats?$/i.test(cell)) continue; // skip repeated headers
+    playerRows.push(rows[i]);
   }
-  return{...meta,games,players};
+
+  // Fixed team block order and sizes matching the sheet template.
+  // These are the player counts per team in the order they appear in the sheet.
+  // Hognation first, then Fili Hustlers, Valley Vipers, Torngat.
+  const TEAM_BLOCKS = [
+    { team: 'Hognation',     count: 11 },
+    { team: 'Fili Hustlers', count: 12 },
+    { team: 'Valley Vipers', count: 12 },
+    { team: 'Torngat',       count: 11 },
+  ];
+
+  const players = [];
+  let rowIdx = 0;
+
+  for (const block of TEAM_BLOCKS) {
+    const blockRows = playerRows.slice(rowIdx, rowIdx + block.count);
+    rowIdx += block.count;
+
+    for (const row of blockRows) {
+      const cell = (row[0]||'').trim();
+      if (!cell) continue;
+
+      // Handle "#N/A PlayerName" edge case from sheet
+      const cleanCell = cell.replace(/^#N\/A\s*/i, '');
+
+      // Parse jersey number from "#45 Cameron Tobin" format
+      const numM = cleanCell.match(/^#?(\d+)\s+(.+)/);
+      const num  = numM ? numM[1] : '';
+      const name = (numM ? numM[2] : cleanCell).trim();
+
+      const ptsR = (row[1]||'').trim();
+      const flsR = (row[2]||'').trim();
+      const gpR  = (row[6]||'').trim(); // GP/DNP is column 6 (not 3!)
+
+      const isDNP = /dnp/i.test(gpR) || /dnp/i.test(ptsR);
+
+      players.push({
+        name, num,
+        team:  block.team,
+        pts:   parseInt(ptsR) || 0,
+        fouls: parseInt(flsR) || 0,
+        gp:    isDNP ? 0 : (parseInt(gpR) || 0),
+        dnp:   isDNP
+      });
+    }
+  }
+
+  return { label, date, games, players };
 }
 
-async function refreshData(){
-  const btn=document.getElementById('refreshBtn');
-  btn.disabled=true;btn.classList.add('spinning');
-  setStatus('Loading all weeks...');
-  const results=await Promise.allSettled(KNOWN_WEEKS.map(async w=>{
-    const rows=await fetchCSV(w.gid);
-    return parseWeek(rows,w);
-  }));
-  const fresh=results.filter(r=>r.status==='fulfilled').map(r=>r.value).filter(w=>w.players.length||w.games.length);
-  btn.disabled=false;btn.classList.remove('spinning');
-  if(fresh.length){
-    weeksData=fresh;usingLive=true;renderAll();
-    const t=new Date();
-    document.getElementById('lastUpdated').textContent='Updated '+t.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-    setStatus(fresh.length+' week'+(fresh.length>1?'s':'')+' loaded live');
-    toast(fresh.length+' week'+(fresh.length>1?'s':'')+' loaded','success');
-  }else{
-    toast('Could not load sheet — using saved data','error');
-    setStatus('Using saved data');
+function parseGamesFromHeadline(headline) {
+  const games = [];
+  const parts = headline.split(/\band\b/i);
+  for (const part of parts) {
+    const sM = part.match(/([A-Za-z ]+?)\s+(\d+)\s+vs\.?\s+([A-Za-z ]+?)\s+(\d+)/i);
+    if (sM) { games.push({ home:sM[1].trim(), homeScore:+sM[2], away:sM[3].trim(), awayScore:+sM[4] }); continue; }
+    const wM = part.match(/([A-Za-z ]+?)\s+(W|L)\s+vs\.?\s+([A-Za-z ]+?)\s+(W|L)/i);
+    if (wM) games.push({ home:wM[1].trim(), homeScore:null, away:wM[3].trim(), awayScore:null, homeWon: wM[2].toUpperCase()==='W' });
   }
+  return games;
 }
 
-function setStatus(msg){document.getElementById('weeksStatus').innerHTML='<span style="font-size:11px;color:var(--muted);">'+msg+'</span>';}
+// ─────────────────────────────────────────────────────────────────
+// MAIN REFRESH FUNCTION
+// ─────────────────────────────────────────────────────────────────
+async function refreshData() {
+  const btn = document.getElementById('refreshBtn');
+  btn.disabled = true;
+  btn.classList.add('spinning');
+  setWeeksStatus('Scanning for week tabs...');
 
+  try {
+    // 1. Auto-discover all GBB Week tabs
+    let tabs = [];
+    try {
+      tabs = await discoverTabsReliably();
+    } catch {
+      // fallback to gviz method
+      try { tabs = await discoverWeekTabs(); } catch {}
+    }
+
+    // Always include Week 1 as a known baseline if discovery finds nothing
+    if (tabs.length === 0) {
+      tabs = [{ name: 'GBB Week 1 - Sat, March 14th 2026 Player Stats', gid: '1513965140' }];
+    }
+
+    setWeeksStatus(`Found ${tabs.length} week tab${tabs.length !== 1 ? 's' : ''} — loading...`);
+
+    // 2. Fetch all tabs in parallel
+    const results = await Promise.allSettled(
+      tabs.map(async tab => {
+        const rows = await fetchTabCSV(tab.gid);
+        return parseWeekRows(rows, tab.name);
+      })
+    );
+
+    // 3. Collect successful results with actual data
+    const fresh = results
+      .filter(r => r.status === 'fulfilled')
+      .map(r => r.value)
+      .filter(w => w.players.length > 0 || w.games.length > 0);
+
+    if (fresh.length > 0) {
+      weeksData = fresh;
+      usingLive = true;
+      renderAll();
+
+      const now = new Date();
+      document.getElementById('lastUpdated').textContent =
+        'Updated ' + now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+      setWeeksStatus(`${fresh.length} week${fresh.length>1?'s':''} loaded live from Google Sheets`);
+      toast(`${fresh.length} week${fresh.length>1?'s':''} loaded`, 'success');
+    } else {
+      toast('Sheet published but no data found yet', 'error');
+      setWeeksStatus('No week data found — try again after entering stats');
+    }
+
+  } catch (err) {
+    console.warn('Refresh error:', err);
+    toast('Could not load sheet — check connection', 'error');
+    setWeeksStatus('Using saved data');
+  }
+
+  btn.disabled = false;
+  btn.classList.remove('spinning');
+}
+
+function setWeeksStatus(msg) {
+  document.getElementById('weeksStatus').innerHTML =
+    `<span style="font-size:11px;color:var(--muted);">${msg}</span>`;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// TOAST
+// ─────────────────────────────────────────────────────────────────
 let toastT;
-function toast(msg,type=''){
-  const el=document.getElementById('toast');
-  el.textContent=msg;el.className='show '+type;
-  clearTimeout(toastT);toastT=setTimeout(()=>{el.className='';},3200);
+function toast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = 'show ' + type;
+  clearTimeout(toastT);
+  toastT = setTimeout(() => { el.className = ''; }, 3200);
 }
 
-const dot=team=>{const t=TEAMS[team];return t?`<span class="team-dot" style="background:${t.dot}"></span>`:''};
-const tc=team=>(TEAMS[team]||{color:'var(--text)'}).color;
-function allPlayers(){
-  const map={};
-  weeksData.forEach(w=>w.players.forEach(p=>{
-    const k=p.name+'|'+p.team;
-    if(!map[k])map[k]={name:p.name,num:p.num,team:p.team,pts:0,fouls:0,gp:0};
-    map[k].pts+=p.pts;map[k].fouls+=p.fouls;map[k].gp+=p.gp;
-    if(p.num)map[k].num=p.num;
+// ─────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────
+const dot = team => {
+  const t = TEAMS[team];
+  return t ? `<span class="team-dot" style="background:${t.dot}"></span>` : '';
+};
+const teamColor = team => (TEAMS[team] || {color:'var(--text)'}).color;
+
+function getAllPlayers() {
+  const map = {};
+  weeksData.forEach(w => w.players.forEach(p => {
+    const k = p.name + '|' + p.team;
+    if (!map[k]) map[k] = { name:p.name, num:p.num, team:p.team, pts:0, fouls:0, gp:0 };
+    map[k].pts += p.pts; map[k].fouls += p.fouls; map[k].gp += p.gp;
+    if (p.num) map[k].num = p.num;
   }));
   return Object.values(map);
 }
 
-function buildStandings(){
-  const rec={};Object.keys(TEAMS).forEach(t=>{rec[t]={w:0,l:0};});
-  weeksData.forEach(w=>w.games.forEach(g=>{
-    if(!rec[g.home])rec[g.home]={w:0,l:0};if(!rec[g.away])rec[g.away]={w:0,l:0};
-    const hw=g.homeScore!==null?g.homeScore>g.awayScore:!!g.homeWon;
-    if(hw){rec[g.home].w++;rec[g.away].l++;}else{rec[g.away].w++;rec[g.home].l++;}
+// ─────────────────────────────────────────────────────────────────
+// RENDER: STANDINGS
+// ─────────────────────────────────────────────────────────────────
+function buildStandings() {
+  const rec = {};
+  Object.keys(TEAMS).forEach(t => { rec[t] = {w:0,l:0}; });
+  weeksData.forEach(w => w.games.forEach(g => {
+    if (!rec[g.home]) rec[g.home] = {w:0,l:0};
+    if (!rec[g.away]) rec[g.away] = {w:0,l:0};
+    const hw = g.homeScore !== null ? g.homeScore > g.awayScore : !!g.homeWon;
+    if (hw) { rec[g.home].w++; rec[g.away].l++; }
+    else     { rec[g.away].w++; rec[g.home].l++; }
   }));
-  const sorted=Object.entries(rec).sort((a,b)=>b[1].w-a[1].w||a[1].l-b[1].l);
-  let h=`<div class="table-wrap"><table class="standings-table"><thead><tr><th>#</th><th>Team</th><th>W</th><th>L</th><th>GP</th><th>Win %</th></tr></thead><tbody>`;
-  sorted.forEach(([name,r],i)=>{
-    const gp=r.w+r.l,pct=gp?Math.round(r.w/gp*100):0;
-    h+=`<tr><td><span class="rank-num">${i+1}</span></td><td><div class="team-pill">${dot(name)}<span style="color:${tc(name)}">${name}</span></div></td><td><span class="stat-val">${r.w}</span></td><td><span class="stat-val" style="color:var(--muted)">${r.l}</span></td><td><span class="stat-muted">${gp}</span></td><td><div class="pct-wrap"><div class="pct-bar-bg"><div class="pct-bar" style="width:${pct}%"></div></div><span class="stat-muted">${pct}%</span></div></td></tr>`;
+
+  const sorted = Object.entries(rec).sort((a,b) => b[1].w - a[1].w || a[1].l - b[1].l);
+  let h = `<div class="table-wrap"><table class="standings-table">
+    <thead><tr><th>#</th><th>Team</th><th>W</th><th>L</th><th>GP</th><th>Win %</th></tr></thead><tbody>`;
+  sorted.forEach(([name, r], i) => {
+    const gp = r.w + r.l, pct = gp ? Math.round(r.w/gp*100) : 0;
+    h += `<tr>
+      <td><span class="rank-num">${i+1}</span></td>
+      <td><div class="team-pill">${dot(name)}<span style="color:${teamColor(name)}">${name}</span></div></td>
+      <td><span class="stat-val">${r.w}</span></td>
+      <td><span class="stat-val" style="color:var(--muted)">${r.l}</span></td>
+      <td><span class="stat-muted">${gp}</span></td>
+      <td><div class="pct-wrap"><div class="pct-bar-bg"><div class="pct-bar" style="width:${pct}%"></div></div>
+        <span class="stat-muted">${pct}%</span></div></td>
+    </tr>`;
   });
-  h+=`</tbody></table></div><div class="info-note" style="margin-top:16px;"><div class="info-dot"></div><span>${usingLive?`Live — ${weeksData.length} week${weeksData.length>1?'s':''} from Google Sheets.`:'Showing saved data. Hit <strong style="color:var(--accent)">Refresh Stats</strong> to load live.'}</span></div>`;
-  document.getElementById('standings-container').innerHTML=h;
+  h += `</tbody></table></div>
+  <div class="info-note" style="margin-top:16px;"><div class="info-dot"></div>
+    <span>${usingLive
+      ? `Live data — ${weeksData.length} week${weeksData.length>1?'s':''} loaded from Google Sheets.`
+      : 'Showing saved data. Hit <strong style="color:var(--accent)">Refresh Stats</strong> to load live data.'
+    }</span></div>`;
+  document.getElementById('standings-container').innerHTML = h;
 }
 
-function buildScores(){
-  let h='';
-  weeksData.forEach(w=>{
-    if(!w.games.length)return;
-    h+=`<div class="week-section"><div class="week-label">${w.label}</div>`;
-    w.games.forEach(g=>{
-      const has=g.homeScore!==null&&g.awayScore!==null,hw=has?g.homeScore>g.awayScore:!!g.homeWon;
-      const hs=has?g.homeScore:(hw?'W':'L'),as=has?g.awayScore:(hw?'L':'W');
-      h+=`<div class="game-card"><div class="game-team"><div class="team-pill" style="margin-bottom:5px;">${dot(g.home)}<span class="game-team-name" style="color:${tc(g.home)}">${g.home}</span></div><span class="result-badge ${hw?'badge-w':'badge-l'}">${hw?'WIN':'LOSS'}</span></div><div class="score-center"><span class="big-score" style="color:${hw?'#4ade80':'#f87171'}">${hs}</span><span class="score-dash">–</span><span class="big-score" style="color:${hw?'#f87171':'#4ade80'}">${as}</span></div><div class="game-team right"><div class="team-pill" style="margin-bottom:5px;justify-content:flex-end;">${dot(g.away)}<span class="game-team-name" style="color:${tc(g.away)}">${g.away}</span></div><span class="result-badge ${hw?'badge-l':'badge-w'}" style="margin-left:auto;">${hw?'LOSS':'WIN'}</span></div></div>`;
+// ─────────────────────────────────────────────────────────────────
+// RENDER: SCORES
+// ─────────────────────────────────────────────────────────────────
+function buildScores() {
+  let h = '';
+  weeksData.forEach(w => {
+    if (!w.games.length) return;
+    h += `<div class="week-section"><div class="week-label">${w.label}</div>`;
+    w.games.forEach(g => {
+      const has = g.homeScore !== null && g.awayScore !== null;
+      const hw = has ? g.homeScore > g.awayScore : !!g.homeWon;
+      const hs = has ? g.homeScore : (hw ? 'W' : 'L');
+      const as = has ? g.awayScore : (hw ? 'L' : 'W');
+      h += `<div class="game-card">
+        <div class="game-team">
+          <div class="team-pill" style="margin-bottom:5px;">${dot(g.home)}<span class="game-team-name" style="color:${teamColor(g.home)}">${g.home}</span></div>
+          <span class="result-badge ${hw?'badge-w':'badge-l'}">${hw?'WIN':'LOSS'}</span>
+        </div>
+        <div class="score-center">
+          <span class="big-score" style="color:${hw?'#4ade80':'#f87171'}">${hs}</span>
+          <span class="score-dash">–</span>
+          <span class="big-score" style="color:${hw?'#f87171':'#4ade80'}">${as}</span>
+        </div>
+        <div class="game-team right">
+          <div class="team-pill" style="margin-bottom:5px;justify-content:flex-end;">${dot(g.away)}<span class="game-team-name" style="color:${teamColor(g.away)}">${g.away}</span></div>
+          <span class="result-badge ${hw?'badge-l':'badge-w'}" style="margin-left:auto;">${hw?'LOSS':'WIN'}</span>
+        </div>
+      </div>`;
     });
-    h+=`</div>`;
+    h += `</div>`;
   });
-  if(!h)h=`<div class="info-note"><div class="info-dot"></div><span>No scores yet.</span></div>`;
-  document.getElementById('scores-container').innerHTML=h;
+  if (!h) h = `<div class="info-note"><div class="info-dot"></div><span>No scores yet — hit Refresh Stats after game day.</span></div>`;
+  document.getElementById('scores-container').innerHTML = h;
 }
 
-function renderStats(){
-  let players=allPlayers();
-  if(activeFilter!=='all')players=players.filter(p=>p.team===activeFilter);
-  players.sort((a,b)=>sortAsc?(a[sortCol]||0)-(b[sortCol]||0):(b[sortCol]||0)-(a[sortCol]||0));
-  const cols=[{k:'name',l:'Player'},{k:'team',l:'Team'},{k:'pts',l:'PTS'},{k:'fouls',l:'Fouls'},{k:'gp',l:'GP'}];
-  let h=`<div class="stats-wrap"><table class="stats-table"><thead><tr>`;
-  cols.forEach(c=>{const s=sortCol===c.k;h+=`<th class="${s?'sorted':''}" data-sort="${c.k}">${c.l}${s?(sortAsc?' ↑':' ↓'):''}</th>`;});
-  h+=`</tr></thead><tbody>`;
-  players.forEach(p=>{
-    const num=p.num?`<span class="player-num">#${p.num}</span>`:'';
-    const dnp=p.dnp?`<span class="dnp-tag">DNP</span>`:'';
-    h+=`<tr><td>${num}<span>${p.name}</span>${dnp}</td><td><div style="display:flex;align-items:center;gap:7px;">${dot(p.team)}<span style="font-size:12px;color:${tc(p.team)};font-weight:600">${p.team}</span></div></td><td><span class="${sortCol==='pts'?'stat-hero':'stat-num'}">${p.pts}</span></td><td><span class="stat-num">${p.fouls}</span></td><td><span class="stat-num">${p.gp}</span></td></tr>`;
+// ─────────────────────────────────────────────────────────────────
+// RENDER: PLAYER STATS
+// ─────────────────────────────────────────────────────────────────
+function renderStats() {
+  let players = getAllPlayers();
+  if (activeFilter !== 'all') players = players.filter(p => p.team === activeFilter);
+  players.sort((a,b) => sortAsc ? (a[sortCol]||0)-(b[sortCol]||0) : (b[sortCol]||0)-(a[sortCol]||0));
+
+  const cols = [{k:'name',l:'Player'},{k:'team',l:'Team'},{k:'pts',l:'PTS'},{k:'fouls',l:'Fouls'},{k:'gp',l:'GP'}];
+  let h = `<div class="stats-wrap"><table class="stats-table"><thead><tr>`;
+  cols.forEach(c => {
+    const s = sortCol === c.k;
+    h += `<th class="${s?'sorted':''}" data-sort="${c.k}">${c.l}${s?(sortAsc?' ↑':' ↓'):''}</th>`;
   });
-  h+=`</tbody></table></div>`;
-  document.getElementById('stats-container').innerHTML=h;
-  document.querySelectorAll('.stats-table th[data-sort]').forEach(th=>th.addEventListener('click',()=>{sortCol===th.dataset.sort?sortAsc=!sortAsc:(sortCol=th.dataset.sort,sortAsc=false);renderStats();}));
+  h += `</tr></thead><tbody>`;
+  players.forEach(p => {
+    const num = p.num ? `<span class="player-num">#${p.num}</span>` : '';
+    const dnp = p.dnp ? `<span class="dnp-tag">DNP</span>` : '';
+    h += `<tr>
+      <td>${num}<span>${p.name}</span>${dnp}</td>
+      <td><div style="display:flex;align-items:center;gap:7px;">${dot(p.team)}<span style="font-size:12px;color:${teamColor(p.team)};font-weight:600">${p.team}</span></div></td>
+      <td><span class="${sortCol==='pts'?'stat-hero':'stat-num'}">${p.pts}</span></td>
+      <td><span class="stat-num">${p.fouls}</span></td>
+      <td><span class="stat-num">${p.gp}</span></td>
+    </tr>`;
+  });
+  h += `</tbody></table></div>`;
+  document.getElementById('stats-container').innerHTML = h;
+  document.querySelectorAll('.stats-table th[data-sort]').forEach(th =>
+    th.addEventListener('click', () => {
+      sortCol === th.dataset.sort ? sortAsc = !sortAsc : (sortCol = th.dataset.sort, sortAsc = false);
+      renderStats();
+    })
+  );
 }
 
-function buildSchedule(){
-  const played=weeksData.map(w=>({...w,played:true}));
-  const upcoming=[];const d=new Date();d.setDate(d.getDate()+((6-d.getDay()+7)%7||7));
-  for(let i=0;i<6;i++){
-    const dayNum=d.getDate();
-    if(!played.some(w=>w.date&&w.date.day===dayNum))
-      upcoming.push({label:'Upcoming',date:{day:dayNum,month:d.toLocaleString('en',{month:'short'})},games:[],played:false});
-    d.setDate(d.getDate()+7);
-  }
-  const all=[...played,...upcoming].slice(0,10);
-  let h=`<div class="sched-list">`;
-  all.forEach(w=>{
-    h+=`<div class="sched-item"><div class="sched-date"><div class="sched-day">${w.date.day}</div><div class="sched-month">${w.date.month}</div></div><div class="sched-divider"></div><div class="sched-games">`;
-    if(w.played&&w.games.length){
-      w.games.forEach(g=>{
-        const has=g.homeScore!==null&&g.awayScore!==null;
-        const score=has?`<span class="game-score-inline">${g.homeScore} – ${g.awayScore}</span>`:'';
-        h+=`<div class="sched-game">${dot(g.home)}<span style="color:${tc(g.home)}">${g.home}</span><span class="vs-chip">vs</span>${dot(g.away)}<span style="color:${tc(g.away)}">${g.away}</span>${score}<span class="status-pill s-played">Final</span></div>`;
+// ─────────────────────────────────────────────────────────────────
+// RENDER: SCHEDULE
+// ─────────────────────────────────────────────────────────────────
+function buildSchedule() {
+  const played = weeksData.map(w => ({ ...w, played: true }));
+
+  // Generate next 6 upcoming Saturdays
+  const upcoming = [];
+  const d = new Date();
+  d.setDate(d.getDate() + ((6 - d.getDay() + 7) % 7 || 7));
+  for (let i = 0; i < 6; i++) {
+    const dayNum = d.getDate();
+    const alreadyPlayed = played.some(w => w.date && w.date.day === dayNum);
+    if (!alreadyPlayed) {
+      upcoming.push({
+        label: 'Upcoming',
+        date: { day: dayNum, month: d.toLocaleString('en',{month:'short'}) },
+        games: [], played: false
       });
-    }else{
-      h+=`<div class="sched-game"><span style="color:var(--muted);font-size:13px;">Games TBD</span><span class="status-pill s-upcoming">Upcoming</span></div>`;
     }
-    h+=`</div></div>`;
+    d.setDate(d.getDate() + 7);
+  }
+
+  const all = [...played, ...upcoming].slice(0, 10);
+  let h = `<div class="sched-list">`;
+  all.forEach(w => {
+    h += `<div class="sched-item">
+      <div class="sched-date"><div class="sched-day">${w.date.day}</div><div class="sched-month">${w.date.month}</div></div>
+      <div class="sched-divider"></div>
+      <div class="sched-games">`;
+    if (w.played && w.games.length) {
+      w.games.forEach(g => {
+        const has = g.homeScore !== null && g.awayScore !== null;
+        const score = has ? `<span class="game-score-inline">${g.homeScore} – ${g.awayScore}</span>` : '';
+        h += `<div class="sched-game">
+          ${dot(g.home)}<span style="color:${teamColor(g.home)}">${g.home}</span>
+          <span class="vs-chip">vs</span>
+          ${dot(g.away)}<span style="color:${teamColor(g.away)}">${g.away}</span>
+          ${score}
+          <span class="status-pill s-played">Final</span>
+        </div>`;
+      });
+    } else {
+      h += `<div class="sched-game"><span style="color:var(--muted);font-size:13px;">Games TBD</span>
+        <span class="status-pill s-upcoming">Upcoming</span></div>`;
+    }
+    h += `</div></div>`;
   });
-  h+=`</div>`;
-  document.getElementById('schedule-container').innerHTML=h;
+  h += `</div>`;
+  document.getElementById('schedule-container').innerHTML = h;
 }
 
-function renderAll(){buildStandings();buildScores();renderStats();buildSchedule();}
+// ─────────────────────────────────────────────────────────────────
+// RENDER ALL
+// ─────────────────────────────────────────────────────────────────
+function renderAll() { buildStandings(); buildScores(); renderStats(); buildSchedule(); }
 
-document.querySelectorAll('.tab-btn').forEach(btn=>btn.addEventListener('click',()=>{
-  document.querySelectorAll('.tab-btn,.tab-panel').forEach(el=>el.classList.remove('active'));
-  btn.classList.add('active');document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
-}));
-document.querySelectorAll('.filter-btn').forEach(btn=>btn.addEventListener('click',()=>{
-  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');activeFilter=btn.dataset.filter;renderStats();
-}));
+// ─────────────────────────────────────────────────────────────────
+// TABS + FILTERS
+// ─────────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn =>
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn, .tab-panel').forEach(el => el.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  })
+);
+document.querySelectorAll('.filter-btn').forEach(btn =>
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeFilter = btn.dataset.filter;
+    renderStats();
+  })
+);
 
-renderAll();
-refreshData().catch(()=>{});
+// ─────────────────────────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────────────────────────
+renderAll(); // show fallback immediately
+refreshData().catch(() => {}); // then auto-refresh from live sheet
 </script>
 </body>
 </html>
