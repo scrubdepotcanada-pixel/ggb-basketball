@@ -233,14 +233,6 @@ footer strong { color: var(--accent); }
 // Published base URL (used as direct fallback if API is down)
 const PUB_BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQxnfq6e_VLNn2t8SKm2CE8H-EIzLhstfs2fTPpcPZGkgMAc_5LvE2rV4R7hN5BybR42KvAu91o3Zx8';
 
-// Fallback GIDs — only used if the serverless API is completely down
-const FALLBACK_GIDS = {
-  'GBB Week 1 - Sat, March 14th 2026 Player Stats': '1513965140',
-  'GBB Week 2 - Sat, March 21st 2026 Player Stats': '40864786',
-  'GBB Week 3 - Sat, March 28th 2026 Player Stats': '587090763',
-  'GBB Week 4 - Sat, April 4th 2026 Player Stats':  '1644843033',
-};
-
 const TEAMS = {
   'Valley Vipers': { color: '#c8c8c8', dot: '#aaaaaa' },
   'Hognation':     { color: '#fca5a5', dot: '#b91c1c' },
@@ -332,44 +324,32 @@ function parseCSV(txt) {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// FETCH CSV — tries API proxy first, falls back to direct GID
+// FETCH CSV — tries API proxy first, falls back to direct fetch
 // ─────────────────────────────────────────────────────────────────
-async function fetchWeekCSV(weekName) {
-  // Try the serverless API proxy first (preferred — no CORS issues)
+async function fetchWeekCSV(gid) {
+  // Try the serverless API proxy first (bypasses any CORS issues)
   try {
-    const apiUrl = `/api/sheets?week=${encodeURIComponent(weekName)}&t=${Date.now()}`;
+    const apiUrl = `/api/sheets?gid=${gid}&t=${Date.now()}`;
     const res = await fetch(apiUrl);
     if (res.ok) {
       const text = await res.text();
-      if (!text.startsWith('{') && !text.startsWith('<!')) { // valid CSV, not JSON error or HTML
+      if (!text.startsWith('{') && !text.startsWith('<!')) {
         return parseCSV(text);
       }
     }
   } catch (e) {
-    console.warn('API proxy failed for', weekName, e.message);
+    console.warn('API proxy failed for gid', gid, e.message);
   }
 
-  // Fallback: try direct Google Sheets CSV by sheet name
-  try {
-    const directUrl = `${PUB_BASE}/pub?single=true&output=csv&sheet=${encodeURIComponent(weekName)}&t=${Date.now()}`;
-    const res = await fetch(directUrl);
-    if (res.ok) {
-      const text = await res.text();
-      if (!text.startsWith('<!')) return parseCSV(text);
-    }
-  } catch (e) {
-    console.warn('Direct sheet-name fetch failed for', weekName, e.message);
+  // Fallback: fetch directly from Google Sheets (works for published sheets)
+  const directUrl = `${PUB_BASE}/pub?single=true&output=csv&gid=${gid}&t=${Date.now()}`;
+  const res = await fetch(directUrl);
+  if (res.ok) {
+    const text = await res.text();
+    if (!text.startsWith('<!')) return parseCSV(text);
   }
 
-  // Last resort: try by hardcoded GID if we have one
-  const gid = FALLBACK_GIDS[weekName];
-  if (gid) {
-    const gidUrl = `${PUB_BASE}/pub?single=true&output=csv&gid=${gid}&t=${Date.now()}`;
-    const res = await fetch(gidUrl);
-    if (res.ok) return parseCSV(await res.text());
-  }
-
-  throw new Error('All CSV fetch methods failed for ' + weekName);
+  throw new Error('CSV fetch failed for gid ' + gid);
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -394,57 +374,99 @@ function parseWeekRows(rows, weekMeta) {
   const headerIdx = rows.findIndex(r => /player.*stat/i.test(r[0]||''));
   if (headerIdx === -1) return { label, date, games, players: [] };
 
-  // Collect player rows (skip blanks and repeated headers)
-  const playerRows = [];
+  // Collect ALL rows after header (including blanks and repeated headers as separators)
+  const rawRows = [];
   for (let i = headerIdx + 1; i < rows.length; i++) {
-    const cell = (rows[i][0]||'').trim();
-    if (!cell) continue;
-    if (/^players?\s*stats?$/i.test(cell)) continue;
-    playerRows.push(rows[i]);
+    rawRows.push(rows[i]);
   }
 
-  // Fixed team block order + sizes (matches the sheet template)
-  const TEAM_BLOCKS = [
-    { team: 'Hognation',     count: 11 },
-    { team: 'Fili Hustlers', count: 12 },
-    { team: 'Valley Vipers', count: 12 },
-    { team: 'Torngat',       count: 11 },
-  ];
+  // Split into team blocks using blank rows or repeated "Players Stats" headers as separators
+  const TEAM_ORDER = ['Hognation', 'Fili Hustlers', 'Valley Vipers', 'Torngat'];
+  const teamBlocks = [];
+  let currentBlock = [];
 
-  const players = [];
-  let rowIdx = 0;
-
-  for (const block of TEAM_BLOCKS) {
-    const blockRows = playerRows.slice(rowIdx, rowIdx + block.count);
-    rowIdx += block.count;
-
-    for (const row of blockRows) {
-      const cell = (row[0]||'').trim();
-      if (!cell) continue;
-
-      const cleanCell = cell.replace(/^#N\/A\s*/i, '');
-      const numM = cleanCell.match(/^#?(\d+)\s+(.+)/);
-      const num  = numM ? numM[1] : '';
-      const name = (numM ? numM[2] : cleanCell).trim();
-
-      const ptsR = (row[1]||'').trim();
-      const flsR = (row[2]||'').trim();
-      const gpR  = (row[6]||'').trim();
-
-      const isDNP = /dnp/i.test(gpR) || /dnp/i.test(ptsR);
-
-      players.push({
-        name, num,
-        team:  block.team,
-        pts:   parseInt(ptsR) || 0,
-        fouls: parseInt(flsR) || 0,
-        gp:    isDNP ? 0 : (parseInt(gpR) || 0),
-        dnp:   isDNP
-      });
+  for (const row of rawRows) {
+    const cell = (row[0]||'').trim();
+    // Blank row or repeated header = team separator
+    if (!cell || /^players?\s*stats?$/i.test(cell)) {
+      if (currentBlock.length > 0) {
+        teamBlocks.push(currentBlock);
+        currentBlock = [];
+      }
+      continue;
     }
+    currentBlock.push(row);
+  }
+  if (currentBlock.length > 0) teamBlocks.push(currentBlock);
+
+  // If we got exactly 4 blocks, map them to teams in order
+  // If we got 1 block (no separators), fall back to splitting evenly or by known counts
+  const players = [];
+
+  if (teamBlocks.length === 4) {
+    // Clean separation — each block is one team
+    teamBlocks.forEach((block, idx) => {
+      const team = TEAM_ORDER[idx];
+      for (const row of block) {
+        players.push(parsePlayerRow(row, team));
+      }
+    });
+  } else if (teamBlocks.length === 1) {
+    // No separators found — all players in one continuous block
+    // Split by total: distribute rows across 4 teams
+    // Use dynamic detection: total / 4 gives approximate team size
+    const allRows = teamBlocks[0];
+    const totalPlayers = allRows.length;
+    // Try to detect team sizes by looking for patterns
+    // Each team has roughly totalPlayers/4 players
+    // But sizes may vary — use best guess based on total
+    const baseSize = Math.floor(totalPlayers / 4);
+    const remainder = totalPlayers % 4;
+    // Distribute remainder to later teams (larger rosters tend to be added later)
+    const sizes = TEAM_ORDER.map((_, idx) => baseSize + (idx < remainder ? 1 : 0));
+
+    let rowIdx = 0;
+    sizes.forEach((size, idx) => {
+      const team = TEAM_ORDER[idx];
+      const blockRows = allRows.slice(rowIdx, rowIdx + size);
+      rowIdx += size;
+      for (const row of blockRows) {
+        players.push(parsePlayerRow(row, team));
+      }
+    });
+  } else {
+    // Unexpected number of blocks — try to map what we have
+    teamBlocks.forEach((block, idx) => {
+      const team = TEAM_ORDER[idx] || 'Unknown';
+      for (const row of block) {
+        players.push(parsePlayerRow(row, team));
+      }
+    });
   }
 
   return { label, date, games, players };
+}
+
+function parsePlayerRow(row, team) {
+  const cell = (row[0]||'').trim();
+  const cleanCell = cell.replace(/^#N\/A\s*/i, '');
+  const numM = cleanCell.match(/^#?(\d+)\s+(.+)/);
+  const num  = numM ? numM[1] : '';
+  const name = (numM ? numM[2] : cleanCell).trim();
+
+  const ptsR = (row[1]||'').trim();
+  const flsR = (row[2]||'').trim();
+  const gpR  = (row[6]||'').trim();
+
+  const isDNP = /dnp/i.test(gpR) || /dnp/i.test(ptsR);
+
+  return {
+    name, num, team,
+    pts:   parseInt(ptsR) || 0,
+    fouls: parseInt(flsR) || 0,
+    gp:    isDNP ? 0 : (parseInt(gpR) || 0),
+    dnp:   isDNP
+  };
 }
 
 function parseGamesFromHeadline(headline) {
@@ -474,16 +496,14 @@ async function discoverWeeks() {
     console.warn('Week discovery API failed:', e.message);
   }
 
-  // Fallback: return hardcoded weeks from FALLBACK_GIDS
-  return Object.keys(FALLBACK_GIDS).map(name => {
-    const weekNum = parseInt(name.match(/week\s*(\d+)/i)?.[1] || '0');
-    const dateMatch = name.match(/(\w+)\s+(\d+)(?:st|nd|rd|th)/i);
-    return {
-      name,
-      weekNumber: weekNum,
-      date: dateMatch ? { day: parseInt(dateMatch[2]), month: dateMatch[1].substring(0,3) } : null,
-    };
-  }).sort((a,b) => a.weekNumber - b.weekNumber);
+  // Fallback: return hardcoded weeks
+  return [
+    { name: 'Week 1', weekNumber: 1, gid: '1513965140', date: { day: 14, month: 'Mar' } },
+    { name: 'Week 2', weekNumber: 2, gid: '40864786',   date: { day: 21, month: 'Mar' } },
+    { name: 'Week 3', weekNumber: 3, gid: '587090763',  date: { day: 28, month: 'Mar' } },
+    { name: 'Week 4', weekNumber: 4, gid: '1644843033', date: { day:  4, month: 'Apr' } },
+    { name: 'Week 5', weekNumber: 5, gid: '1402349068', date: { day: 11, month: 'Apr' } },
+  ];
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -501,7 +521,7 @@ async function refreshData() {
   // Step 2: Fetch CSV for each week in parallel
   const results = await Promise.allSettled(
     weeks.map(async w => {
-      const rows = await fetchWeekCSV(w.name);
+      const rows = await fetchWeekCSV(w.gid);
       return parseWeekRows(rows, w);
     })
   );
