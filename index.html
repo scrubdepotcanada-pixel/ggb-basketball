@@ -241,75 +241,12 @@ const TEAMS = {
 };
 
 // ─────────────────────────────────────────────────────────────────
-// FALLBACK DATA — shown immediately while live fetch runs
-// ─────────────────────────────────────────────────────────────────
-const FALLBACK = [{
-  label: 'Week 1 — Saturday, March 14, 2026',
-  date: { day: 14, month: 'Mar' },
-  games: [
-    { home:'Torngat', homeScore:null, away:'Valley Vipers', awayScore:null, homeWon:true },
-    { home:'Hognation', homeScore:41, away:'Fili Hustlers', awayScore:54 },
-  ],
-  players: [
-    {name:'James Dempster',num:'',team:'Hognation',pts:0,fouls:0,gp:0},
-    {name:'Jack Leonard',num:'',team:'Hognation',pts:0,fouls:0,gp:0},
-    {name:'Alex Barney',num:'',team:'Hognation',pts:0,fouls:0,gp:0},
-    {name:'Adam Barney',num:'',team:'Hognation',pts:0,fouls:0,gp:0},
-    {name:'Davin Michelin',num:'',team:'Hognation',pts:0,fouls:0,gp:0},
-    {name:'Kyle Collins',num:'',team:'Hognation',pts:0,fouls:0,gp:0},
-    {name:'Riley Pye',num:'',team:'Hognation',pts:0,fouls:0,gp:0},
-    {name:'Daniel Gaudreault',num:'',team:'Hognation',pts:0,fouls:0,gp:0},
-    {name:'Breck Merser',num:'',team:'Hognation',pts:0,fouls:0,gp:0},
-    {name:'Max Montague',num:'',team:'Hognation',pts:0,fouls:0,gp:0},
-    {name:'Carlito Hillier',num:'',team:'Hognation',pts:0,fouls:0,gp:0},
-    {name:'Chris Bennett',num:'0',team:'Fili Hustlers',pts:5,fouls:0,gp:1},
-    {name:'Benjamin Ralph',num:'',team:'Fili Hustlers',pts:0,fouls:0,gp:0,dnp:true},
-    {name:'Cameron Tobin',num:'45',team:'Fili Hustlers',pts:8,fouls:0,gp:1},
-    {name:'Jason Sun',num:'2',team:'Fili Hustlers',pts:2,fouls:2,gp:1},
-    {name:'Harley Vera',num:'5',team:'Fili Hustlers',pts:12,fouls:1,gp:1},
-    {name:'Labi Laporte',num:'32',team:'Fili Hustlers',pts:6,fouls:1,gp:1},
-    {name:'Ritchie Stokes',num:'',team:'Fili Hustlers',pts:0,fouls:0,gp:0,dnp:true},
-    {name:'Caleb Strugnell',num:'',team:'Fili Hustlers',pts:0,fouls:0,gp:0,dnp:true},
-    {name:'Rayan Seghaier',num:'9',team:'Fili Hustlers',pts:2,fouls:0,gp:1},
-    {name:'Humphrey Kiwanuka',num:'',team:'Fili Hustlers',pts:0,fouls:0,gp:0,dnp:true},
-    {name:'Keegan Blake',num:'25',team:'Fili Hustlers',pts:3,fouls:0,gp:1},
-    {name:'Austin Strom',num:'40',team:'Fili Hustlers',pts:3,fouls:1,gp:1},
-    {name:'Yaniv Koblentz',num:'',team:'Valley Vipers',pts:0,fouls:0,gp:0},
-    {name:'Kyle Decker',num:'',team:'Valley Vipers',pts:0,fouls:0,gp:0},
-    {name:'Riley Gregorie',num:'',team:'Valley Vipers',pts:0,fouls:0,gp:0},
-    {name:'Neko Butt',num:'',team:'Valley Vipers',pts:0,fouls:0,gp:0},
-    {name:'Nathan Ferquet',num:'',team:'Valley Vipers',pts:0,fouls:0,gp:0},
-    {name:'Cali Morgan',num:'',team:'Valley Vipers',pts:0,fouls:0,gp:0},
-    {name:'Enrixel Magallanes',num:'',team:'Valley Vipers',pts:0,fouls:0,gp:0},
-    {name:'Riley Spence',num:'',team:'Valley Vipers',pts:0,fouls:0,gp:0},
-    {name:'Brady Pittmann',num:'',team:'Valley Vipers',pts:0,fouls:0,gp:0},
-    {name:'Ayden Sponagle',num:'',team:'Valley Vipers',pts:0,fouls:0,gp:0},
-    {name:'Logan Lyal',num:'',team:'Valley Vipers',pts:0,fouls:0,gp:0},
-    {name:'Riley Newman',num:'',team:'Valley Vipers',pts:0,fouls:0,gp:0},
-    {name:'Jester Reynales',num:'3',team:'Torngat',pts:7,fouls:0,gp:1},
-    {name:'Eric Canlas',num:'14',team:'Torngat',pts:7,fouls:0,gp:1},
-    {name:'Ck Canlas',num:'44',team:'Torngat',pts:14,fouls:0,gp:1},
-    {name:'Paolo Reyes',num:'',team:'Torngat',pts:0,fouls:0,gp:0,dnp:true},
-    {name:'Daryl Cayanan',num:'22',team:'Torngat',pts:11,fouls:0,gp:1},
-    {name:'Juls Cayanan',num:'11',team:'Torngat',pts:8,fouls:0,gp:1},
-    {name:'Lemuel Ayuban',num:'50',team:'Torngat',pts:0,fouls:0,gp:1},
-    {name:'Rodel Ayuban',num:'0',team:'Torngat',pts:0,fouls:0,gp:1},
-    {name:'Pope Guim',num:'',team:'Torngat',pts:0,fouls:0,gp:0,dnp:true},
-    {name:'Nick Esguerra',num:'',team:'Torngat',pts:0,fouls:0,gp:0,dnp:true},
-    {name:'Nathan Timbang',num:'7',team:'Torngat',pts:7,fouls:0,gp:1},
-  ]
-}];
-
-// ─────────────────────────────────────────────────────────────────
 // STATE
 // ─────────────────────────────────────────────────────────────────
-let weeksData = [...FALLBACK];
+let weeksData = [];
 let usingLive = false;
 let sortCol = 'pts', sortAsc = false, activeFilter = 'all';
 
-// ─────────────────────────────────────────────────────────────────
-// FETCH WEEK DATA — uses the /api/sheets?players=GID endpoint
-// which reads cell background colors to determine team assignment
 // ─────────────────────────────────────────────────────────────────
 // CSV PARSING
 // ─────────────────────────────────────────────────────────────────
@@ -740,7 +677,6 @@ document.querySelectorAll('.filter-btn').forEach(btn =>
 // ─────────────────────────────────────────────────────────────────
 // INIT
 // ─────────────────────────────────────────────────────────────────
-renderAll();
 refreshData().catch(() => {});
 </script>
 </body>
