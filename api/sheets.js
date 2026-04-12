@@ -1,16 +1,40 @@
 // /api/sheets.js — Vercel serverless function
 //
-// Two modes:
-//   GET /api/sheets              → discover all week tabs (names + GIDs)
-//   GET /api/sheets?gid=XXXXX    → proxy CSV for that GID (bypasses CORS)
+// Three modes:
+//   GET /api/sheets                → discover all week tabs (names + GIDs)
+//   GET /api/sheets?gid=XXXXX     → proxy CSV for that GID
+//   GET /api/sheets?players=XXXXX → fetch player data WITH background colors for team detection
 //
-// Discovery uses Google Sheets API v4 (free, no key needed for public sheets)
-// which returns all sheet names + sheetIds in clean JSON.
+// The key insight: team assignment is determined by row background color in the sheet.
+// CSV export loses colors, so we use the Sheets API v4 to read them.
+// Public sheets don't need an API key.
 
 const SHEET_ID = '1Gs9IzkezmssKoiCRNVbM78_xkIN5hXo8Fao3R3voJHo';
 const PUB_BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQxnfq6e_VLNn2t8SKm2CE8H-EIzLhstfs2fTPpcPZGkgMAc_5LvE2rV4R7hN5BybR42KvAu91o3Zx8';
 
-// Hardcoded fallback — site never breaks
+// Team color mapping — background colors used in the sheet
+// These map RGB values from the Sheets API to team names
+// Red = Hognation, Blue = Fili Hustlers, Black/dark = Valley Vipers, Yellow = Torngat
+const TEAM_COLORS = [
+  { team: 'Hognation',     match: (r, g, b) => r > 0.6 && g < 0.4 && b < 0.4 },           // Red
+  { team: 'Fili Hustlers', match: (r, g, b) => b > 0.6 && r < 0.4 && g < 0.5 },           // Blue
+  { team: 'Torngat',       match: (r, g, b) => r > 0.6 && g > 0.6 && b < 0.4 },           // Yellow
+  { team: 'Valley Vipers', match: (r, g, b) => r < 0.3 && g < 0.3 && b < 0.3 },           // Black/dark
+];
+
+function detectTeam(bgColor) {
+  if (!bgColor) return 'Unknown';
+  const r = bgColor.red   || 0;
+  const g = bgColor.green || 0;
+  const b = bgColor.blue  || 0;
+
+  for (const tc of TEAM_COLORS) {
+    if (tc.match(r, g, b)) return tc.team;
+  }
+  return 'Unknown';
+}
+
+// Hardcoded fallback
 const FALLBACK_WEEKS = [
   { name: 'GBB Week 1 - Sat, March 14th 2026 Player Stats', weekNumber: 1, gid: '1513965140', date: { day: 14, month: 'Mar' } },
   { name: 'GBB Week 2 - Sat, March 21st 2026 Player Stats', weekNumber: 2, gid: '40864786',   date: { day: 21, month: 'Mar' } },
@@ -23,7 +47,106 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET');
 
-  const { gid } = req.query;
+  const { gid, players } = req.query;
+
+  // ─── Mode 3: Fetch player data with team colors ───
+  if (players) {
+    try {
+      // First, find the sheet name for this GID
+      const metaUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}?fields=sheets(properties(sheetId,title))`;
+      const metaResp = await fetch(metaUrl);
+      let sheetName = null;
+
+      if (metaResp.ok) {
+        const metaData = await metaResp.json();
+        const sheet = metaData.sheets?.find(s => String(s.properties.sheetId) === players);
+        if (sheet) sheetName = sheet.properties.title;
+      }
+
+      if (!sheetName) {
+        return res.status(404).json({ success: false, error: `Sheet with GID ${players} not found` });
+      }
+
+      // Fetch cell data + formatting for columns A-G (player name, PTS, Fouls, FTA, _, _, Played)
+      // Using includeGridData to get background colors
+      const encodedName = encodeURIComponent(sheetName);
+      const dataUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}?ranges='${encodedName}'!A1:G70&fields=sheets(data(rowData(values(formattedValue,effectiveFormat(backgroundColor)))))`;
+      const dataResp = await fetch(dataUrl);
+
+      if (!dataResp.ok) {
+        const errText = await dataResp.text();
+        return res.status(500).json({ success: false, error: `Sheets API error: ${dataResp.status}`, detail: errText });
+      }
+
+      const data = await dataResp.json();
+      const rowData = data.sheets?.[0]?.data?.[0]?.rowData || [];
+
+      // Parse the headline row (contains game scores)
+      let headline = '';
+      const parsedPlayers = [];
+
+      for (let i = 0; i < rowData.length; i++) {
+        const row = rowData[i];
+        if (!row.values || !row.values[0]) continue;
+
+        const cellA = row.values[0].formattedValue || '';
+        const bgColor = row.values[0].effectiveFormat?.backgroundColor;
+
+        // Check if this is the game headline row
+        if (/week\s*\d/i.test(cellA) && /\bvs\b/i.test(cellA)) {
+          headline = cellA;
+          continue;
+        }
+
+        // Skip non-player rows (headers, team labels, title, blanks)
+        if (!cellA.trim()) continue;
+        if (/^players?\s*stats?$/i.test(cellA)) continue;
+        if (/^(black|red|blue|yellow)\s*-/i.test(cellA)) continue;
+        if (/goose\s*bay\s*basketball/i.test(cellA)) continue;
+        if (/^(PTS|Fouls|FTA|Played)$/i.test(cellA)) continue;
+
+        // Detect team from background color
+        const team = detectTeam(bgColor);
+        if (team === 'Unknown') continue; // Skip rows without team coloring
+
+        // Parse player name and jersey number
+        const cleanCell = cellA.replace(/^#N\/A\s*/i, '');
+        const numMatch = cleanCell.match(/^#?(\d+)\s+(.+)/);
+        const num = numMatch ? numMatch[1] : '';
+        const name = (numMatch ? numMatch[2] : cleanCell.replace(/^#/, '')).trim();
+
+        if (!name) continue;
+
+        // Parse stats from other columns
+        const pts   = row.values[1]?.formattedValue || '';
+        const fouls = row.values[2]?.formattedValue || '';
+        const gp    = row.values[6]?.formattedValue || '';  // Column G = "Played"
+
+        const isDNP = /dnp/i.test(gp) || /dnp/i.test(pts);
+
+        parsedPlayers.push({
+          name,
+          num,
+          team,
+          pts:   parseInt(pts) || 0,
+          fouls: parseInt(fouls) || 0,
+          gp:    isDNP ? 0 : (parseInt(gp) || 0),
+          dnp:   isDNP,
+        });
+      }
+
+      res.setHeader('Cache-Control', 's-maxage=120, stale-while-revalidate=30');
+      return res.status(200).json({
+        success: true,
+        headline,
+        players: parsedPlayers,
+        count: parsedPlayers.length,
+      });
+    } catch (e) {
+      console.error('Player fetch error:', e);
+      return res.status(500).json({ success: false, error: e.message });
+    }
+  }
 
   // ─── Mode 2: Proxy CSV for a specific GID ───
   if (gid) {
@@ -41,7 +164,7 @@ export default async function handler(req, res) {
       const csvText = await csvResp.text();
 
       if (csvText.startsWith('<!DOCTYPE') || csvText.startsWith('<html')) {
-        return res.status(404).json({ success: false, error: `GID ${gid} returned HTML instead of CSV` });
+        return res.status(404).json({ success: false, error: `GID ${gid} returned HTML` });
       }
 
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -56,13 +179,9 @@ export default async function handler(req, res) {
   let tabs = [];
   let source = 'unknown';
 
-  // Strategy A: Google Sheets API v4 — returns sheet metadata as clean JSON
-  // Works without an API key for publicly shared sheets
   try {
     const apiUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}?fields=sheets(properties(sheetId,title))`;
-    const apiResp = await fetch(apiUrl, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible)' },
-    });
+    const apiResp = await fetch(apiUrl);
 
     if (apiResp.ok) {
       const data = await apiResp.json();
@@ -73,82 +192,9 @@ export default async function handler(req, res) {
         }));
         source = 'sheets-api';
       }
-    } else {
-      console.error('Sheets API returned:', apiResp.status);
     }
   } catch (e) {
     console.error('Sheets API failed:', e.message);
-  }
-
-  // Strategy B: Export as XLSX and parse workbook.xml
-  if (tabs.length === 0) {
-    try {
-      const exportUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=xlsx`;
-      const xlsxResp = await fetch(exportUrl, {
-        headers: { 'User-Agent': 'Mozilla/5.0 (compatible)' },
-        redirect: 'follow',
-      });
-
-      if (xlsxResp.ok) {
-        const buffer = await xlsxResp.arrayBuffer();
-        const text = new TextDecoder('utf-8', { fatal: false }).decode(new Uint8Array(buffer));
-
-        // Parse <sheet name="..." sheetId="..." .../> from workbook.xml inside the ZIP
-        const sheetRegex = /<sheet[^>]+name="([^"]+)"[^>]+sheetId="(\d+)"/g;
-        let match;
-        while ((match = sheetRegex.exec(text)) !== null) {
-          const name = match[1]
-            .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-            .replace(/&quot;/g, '"').replace(/&apos;/g, "'");
-          tabs.push({ name, gid: match[2] });
-        }
-
-        // Note: sheetId in workbook.xml is NOT the same as the gid in the URL.
-        // workbook.xml sheetId is sequential (1, 2, 3...) while URL gid is the actual sheet ID.
-        // We need r:id to map to the correct gid. This approach is unreliable for gids.
-        // If we got names but wrong gids, we'll try to match by name to known gids.
-        if (tabs.length > 0) source = 'xlsx';
-      }
-    } catch (e) {
-      console.error('XLSX export failed:', e.message);
-    }
-  }
-
-  // Strategy C: pubhtml page parsing
-  if (tabs.length === 0) {
-    try {
-      const pubUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/pubhtml`;
-      const pubResp = await fetch(pubUrl, {
-        headers: { 'User-Agent': 'Mozilla/5.0 (compatible)' },
-        redirect: 'follow',
-      });
-      const html = await pubResp.text();
-
-      // Try multiple patterns
-      const patterns = [
-        /id="sheet-button-(\d+)"[\s\S]*?<a[^>]*>([^<]+)<\/a>/g,
-        /data-name="([^"]+)"[^>]*data-gid="(\d+)"/g,
-        /gid=(\d+)[^"]*"[^>]*>([^<]*GBB[^<]*)</g,
-      ];
-
-      for (const regex of patterns) {
-        let m;
-        while ((m = regex.exec(html)) !== null) {
-          // Pattern 1: gid first, name second
-          // Pattern 2: name first, gid second
-          // Pattern 3: gid first, name second
-          const isNameFirst = regex.source.startsWith('data-name');
-          const gid = isNameFirst ? m[2] : m[1];
-          const name = (isNameFirst ? m[1] : m[2]).trim();
-          if (name && !tabs.some(t => t.gid === gid)) {
-            tabs.push({ name, gid });
-          }
-        }
-        if (tabs.length > 0) { source = 'pubhtml'; break; }
-      }
-    } catch (e) {
-      console.error('pubhtml failed:', e.message);
-    }
   }
 
   // Filter to week tabs
@@ -166,7 +212,7 @@ export default async function handler(req, res) {
     })
     .sort((a, b) => a.weekNumber - b.weekNumber);
 
-  // Deduplicate by week number
+  // Deduplicate
   const seen = new Set();
   const deduped = weekTabs.filter(t => {
     if (seen.has(t.weekNumber)) return false;
@@ -186,7 +232,7 @@ export default async function handler(req, res) {
     });
   }
 
-  // Final fallback
+  // Fallback
   res.setHeader('Cache-Control', 's-maxage=60');
   return res.status(200).json({
     success: true,
