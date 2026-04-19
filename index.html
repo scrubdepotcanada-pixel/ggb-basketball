@@ -94,6 +94,15 @@ main { max-width: 960px; margin: 0 auto; padding: 36px 28px 80px; }
 .big-score { font-size: 42px; font-weight: 900; line-height: 1; }
 .score-dash { font-size: 24px; color: var(--muted); }
 
+.search-row { position: relative; margin-bottom: 14px; display: flex; align-items: center; }
+.search-row .search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+.search-row input { width: 100%; font-family: 'Barlow', sans-serif; font-size: 14px; color: var(--text); background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 11px 40px 11px 38px; outline: none; transition: border-color 0.15s, background 0.15s; }
+.search-row input::placeholder { color: var(--muted); }
+.search-row input:focus { border-color: rgba(232,184,75,0.4); background: #1e1e2c; }
+.search-row input::-webkit-search-cancel-button { display: none; }
+.search-row #playerSearchClear { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--muted); font-size: 20px; line-height: 1; width: 28px; height: 28px; border-radius: 6px; cursor: pointer; display: none; align-items: center; justify-content: center; }
+.search-row #playerSearchClear:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+.search-row.has-text #playerSearchClear { display: flex; }
 .filter-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
 .filter-btn { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; padding: 7px 16px; border-radius: 6px; border: 1px solid var(--border); background: none; color: var(--muted); cursor: pointer; transition: all 0.15s; }
 .filter-btn:hover, .filter-btn.active { background: var(--accent-dim); border-color: rgba(232,184,75,0.3); color: var(--accent); }
@@ -194,6 +203,11 @@ footer strong { color: var(--accent); }
   </div>
   <div id="tab-stats" class="tab-panel">
     <div class="section-header"><h2>Player Stats</h2><p>Season totals &mdash; click any column to sort</p></div>
+    <div class="search-row">
+      <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
+      <input id="playerSearch" type="search" placeholder="Search player by name…" autocomplete="off" spellcheck="false">
+      <button id="playerSearchClear" type="button" aria-label="Clear search">&times;</button>
+    </div>
     <div class="filter-row">
       <button class="filter-btn active" data-filter="all">All Players</button>
       <button class="filter-btn" data-filter="Valley Vipers">Valley Vipers</button>
@@ -246,7 +260,7 @@ const TEAM_CANONICAL = {
 // ═══════════════════════════════════════════════════════════════
 let weeksData = [];
 let usingLive = false;
-let sortCol = 'pts', sortAsc = false, activeFilter = 'all';
+let sortCol = 'pts', sortAsc = false, activeFilter = 'all', searchQuery = '';
 
 // ═══════════════════════════════════════════════════════════════
 // CSV PARSING — FIX: strip \r before parsing
@@ -650,6 +664,8 @@ function buildScores() {
 function renderStats() {
   let players = getAllPlayers();
   if (activeFilter !== 'all') players = players.filter(p => p.team === activeFilter);
+  const q = searchQuery.trim().toLowerCase();
+  if (q) players = players.filter(p => p.name.toLowerCase().includes(q));
   players.sort((a,b) => sortAsc ? (a[sortCol]||0)-(b[sortCol]||0) : (b[sortCol]||0)-(a[sortCol]||0));
   // For name sort, use alphabetical
   if (sortCol === 'name') {
@@ -660,6 +676,11 @@ function renderStats() {
   }
 
   const cols = [{k:'name',l:'Player'},{k:'team',l:'Team'},{k:'pts',l:'PTS'},{k:'fouls',l:'Fouls'},{k:'gp',l:'GP'}];
+  if (!players.length) {
+    document.getElementById('stats-container').innerHTML =
+      `<div class="info-note"><div class="info-dot"></div><span>No players match <strong style="color:var(--accent)">"${(q||'your filters').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]))}"</strong>.</span></div>`;
+    return;
+  }
   let h = `<div class="stats-wrap"><table class="stats-table"><thead><tr>`;
   cols.forEach(c => {
     const s = sortCol === c.k;
@@ -792,6 +813,22 @@ document.querySelectorAll('.filter-btn').forEach(btn =>
     renderStats();
   })
 );
+
+const searchInput = document.getElementById('playerSearch');
+const searchRow = searchInput.closest('.search-row');
+const searchClear = document.getElementById('playerSearchClear');
+searchInput.addEventListener('input', () => {
+  searchQuery = searchInput.value;
+  searchRow.classList.toggle('has-text', searchQuery.length > 0);
+  renderStats();
+});
+searchClear.addEventListener('click', () => {
+  searchInput.value = '';
+  searchQuery = '';
+  searchRow.classList.remove('has-text');
+  renderStats();
+  searchInput.focus();
+});
 
 // ═══════════════════════════════════════════════════════════════
 // INIT
