@@ -17,6 +17,7 @@ const FALLBACK_WEEKS = [
   { name: 'Week 3', weekNumber: 3, gid: '587090763',  date: { day: 28, month: 'Mar' } },
   { name: 'Week 4', weekNumber: 4, gid: '1644843033', date: { day:  4, month: 'Apr' } },
   { name: 'Week 5', weekNumber: 5, gid: '1402349068', date: { day: 11, month: 'Apr' } },
+  { name: 'Week 6', weekNumber: 6, gid: '267429677',  date: { day: 18, month: 'Apr' } },
 ];
 
 export default async function handler(req, res) {
@@ -53,39 +54,28 @@ export default async function handler(req, res) {
   }
 
   // ─── Mode 1: Discover all week tabs ───
+  // The sheets.googleapis.com v4 API requires an API key for public calls,
+  // so we rely on the published pubhtml URL (same base as the CSV fetches).
+  // The HTML embeds each tab as a JS literal: name: "...", gid: "..."
   let tabs = [];
   let source = 'unknown';
 
-  // Strategy A: Google Sheets API v4
-  try {
-    const apiUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}?fields=sheets(properties(sheetId,title))`;
-    const apiResp = await fetch(apiUrl);
+  const pubUrls = [
+    `${PUB_BASE}/pubhtml`,
+    `https://docs.google.com/spreadsheets/d/${SHEET_ID}/pubhtml`,
+  ];
 
-    if (apiResp.ok) {
-      const data = await apiResp.json();
-      if (data.sheets && data.sheets.length > 0) {
-        tabs = data.sheets.map(s => ({
-          name: s.properties.title,
-          gid: String(s.properties.sheetId),
-        }));
-        source = 'sheets-api';
-      }
-    }
-  } catch (e) {
-    console.error('Sheets API failed:', e.message);
-  }
-
-  // Strategy B: Try fetching the published HTML page for tab info
-  if (tabs.length === 0) {
+  for (const pubUrl of pubUrls) {
     try {
-      const pubUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/pubhtml`;
       const pubResp = await fetch(pubUrl, {
         headers: { 'User-Agent': 'Mozilla/5.0 (compatible)' },
         redirect: 'follow',
       });
+      if (!pubResp.ok) continue;
       const html = await pubResp.text();
 
       const patterns = [
+        /name:\s*"([^"]+)"\s*,\s*gid:\s*"(\d+)"/g,
         /id="sheet-button-(\d+)"[\s\S]*?<a[^>]*>([^<]+)<\/a>/g,
         /data-name="([^"]+)"[^>]*data-gid="(\d+)"/g,
       ];
@@ -93,17 +83,19 @@ export default async function handler(req, res) {
       for (const regex of patterns) {
         let m;
         while ((m = regex.exec(html)) !== null) {
-          const isNameFirst = regex.source.startsWith('data-name');
-          const gid = isNameFirst ? m[2] : m[1];
-          const name = (isNameFirst ? m[1] : m[2]).trim();
-          if (name && !tabs.some(t => t.gid === gid)) {
+          const nameFirst = regex.source.startsWith('name:') || regex.source.startsWith('data-name');
+          const name = (nameFirst ? m[1] : m[2]).trim();
+          const gid  = nameFirst ? m[2] : m[1];
+          if (name && gid && !tabs.some(t => t.gid === gid)) {
             tabs.push({ name, gid });
           }
         }
-        if (tabs.length > 0) { source = 'pubhtml'; break; }
+        if (tabs.length > 0) break;
       }
+
+      if (tabs.length > 0) { source = 'pubhtml'; break; }
     } catch (e) {
-      console.error('pubhtml failed:', e.message);
+      console.error('pubhtml fetch failed for', pubUrl, e.message);
     }
   }
 

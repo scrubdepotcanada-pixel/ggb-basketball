@@ -19,7 +19,8 @@ body { font-family: 'Barlow', sans-serif; background: var(--black); color: var(-
 .hero-court { position: absolute; right: -80px; top: 50%; transform: translateY(-50%); width: 340px; height: 340px; border: 2px solid rgba(232,184,75,0.07); border-radius: 50%; pointer-events: none; }
 .hero-court::before { content: ''; position: absolute; inset: 35px; border: 1px solid rgba(232,184,75,0.04); border-radius: 50%; }
 .hero-inner { position: relative; max-width: 960px; margin: 0 auto; padding: 52px 28px 44px; display: flex; align-items: center; gap: 32px; flex-wrap: wrap; }
-.hero-logo { width: 86px; height: 86px; background: var(--accent); border-radius: 18px; display: flex; align-items: center; justify-content: center; font-family: 'Barlow Condensed', sans-serif; font-size: 30px; font-weight: 900; color: var(--black); letter-spacing: -1px; flex-shrink: 0; box-shadow: 0 0 40px rgba(232,184,75,0.25); }
+.hero-logo { width: 96px; height: 96px; border-radius: 18px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; object-fit: contain; box-shadow: 0 0 40px rgba(232,184,75,0.2); }
+.hero-logo.hero-logo-fallback { background: var(--accent); font-family: 'Barlow Condensed', sans-serif; font-size: 30px; font-weight: 900; color: var(--black); letter-spacing: -1px; }
 .hero-text h1 { font-family: 'Barlow Condensed', sans-serif; font-size: clamp(34px,7vw,60px); font-weight: 900; line-height: 0.92; letter-spacing: -1px; text-transform: uppercase; }
 .hero-text h1 em { color: var(--accent); font-style: normal; }
 .hero-text p { margin-top: 12px; font-size: 13px; color: var(--muted); letter-spacing: 2.5px; text-transform: uppercase; font-weight: 500; }
@@ -96,7 +97,7 @@ main { max-width: 960px; margin: 0 auto; padding: 36px 28px 80px; }
 .filter-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
 .filter-btn { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; padding: 7px 16px; border-radius: 6px; border: 1px solid var(--border); background: none; color: var(--muted); cursor: pointer; transition: all 0.15s; }
 .filter-btn:hover, .filter-btn.active { background: var(--accent-dim); border-color: rgba(232,184,75,0.3); color: var(--accent); }
-.stats-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 14px; }
+.stats-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 14px; background: var(--black); }
 .stats-table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 520px; }
 .stats-table thead { background: rgba(255,255,255,0.025); }
 .stats-table th { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); padding: 13px 18px; text-align: center; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; white-space: nowrap; }
@@ -108,6 +109,14 @@ main { max-width: 960px; margin: 0 auto; padding: 36px 28px 80px; }
 .stats-table tbody tr:hover { background: rgba(255,255,255,0.025); }
 .stats-table td { padding: 14px 18px; text-align: center; }
 .stats-table td:first-child, .stats-table td:nth-child(2) { text-align: left; }
+.stats-table th:first-child, .stats-table td:first-child { position: sticky; left: 0; background: var(--black); z-index: 1; white-space: nowrap; }
+.stats-table thead th:first-child { background: #14141d; z-index: 2; }
+.stats-table tbody tr:hover td:first-child { background: #12121a; }
+@media (max-width: 640px) {
+  .stats-table { min-width: 460px; font-size: 13px; }
+  .stats-table th, .stats-table td { padding: 11px 10px; }
+  .stats-table th:first-child, .stats-table td:first-child { padding-left: 14px; min-width: 130px; }
+}
 .player-num { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; color: var(--muted); font-weight: 700; margin-right: 6px; }
 .dnp-tag { font-size: 10px; color: var(--muted); letter-spacing: 1px; margin-left: 8px; }
 .stat-hero { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 900; color: var(--accent); }
@@ -148,7 +157,7 @@ footer strong { color: var(--accent); }
   <div class="hero-bg"></div>
   <div class="hero-court"></div>
   <div class="hero-inner">
-    <div class="hero-logo">GBB</div>
+    <img src="logo.png" alt="Goose Bay Basketball League" class="hero-logo" onerror="this.outerHTML='<div class=&quot;hero-logo hero-logo-fallback&quot;>GBB</div>'">
     <div class="hero-text">
       <h1>Goose Bay<br><em>Basketball</em><br>League</h1>
       <p>Goose Bay, NL &mdash; Season 2026</p>
@@ -419,6 +428,7 @@ async function discoverWeeks() {
     { name: 'Week 3', weekNumber: 3, gid: '587090763',  date: { day: 28, month: 'Mar' } },
     { name: 'Week 4', weekNumber: 4, gid: '1644843033', date: { day:  4, month: 'Apr' } },
     { name: 'Week 5', weekNumber: 5, gid: '1402349068', date: { day: 11, month: 'Apr' } },
+    { name: 'Week 6', weekNumber: 6, gid: '267429677',  date: { day: 18, month: 'Apr' } },
   ];
 }
 
@@ -520,10 +530,11 @@ function getAllPlayers() {
         };
       }
 
-      // Sum stats from every week
+      // Sum stats from every week. GP = weeks actually played
+      // (column G in the sheet is cumulative, so summing it double-counts).
       map[key].pts   += p.pts;
       map[key].fouls += p.fouls;
-      map[key].gp    += p.gp;
+      map[key].gp    += p.dnp ? 0 : 1;
 
       // Update team to latest week's assignment (later weekIdx wins)
       // Also update jersey number if we have one
