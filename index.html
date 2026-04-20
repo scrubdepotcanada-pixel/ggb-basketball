@@ -167,8 +167,12 @@ main { max-width: 960px; margin: 0 auto; padding: 36px 28px 80px; }
 .roster-player .player-num { font-size: 11px; }
 .info-note { margin-top: 20px; padding: 14px 18px; background: rgba(232,184,75,0.05); border: 1px solid rgba(232,184,75,0.15); border-radius: 8px; font-size: 12px; color: var(--muted); display: flex; align-items: flex-start; gap: 10px; line-height: 1.6; }
 .info-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: 5px; animation: blink 2s ease-in-out infinite; }
-footer { border-top: 1px solid var(--border); padding: 28px; text-align: center; font-size: 12px; color: var(--muted); letter-spacing: 1px; }
+footer { border-top: 1px solid var(--border); padding: 28px; text-align: center; font-size: 12px; color: var(--muted); letter-spacing: 1px; display: flex; flex-direction: column; gap: 10px; align-items: center; }
 footer strong { color: var(--accent); }
+.built-by { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); text-decoration: none; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; padding: 6px 12px; border: 1px solid var(--border); border-radius: 999px; transition: border-color 0.2s, color 0.2s, background 0.2s; }
+.built-by:hover { color: var(--accent); border-color: rgba(232,184,75,0.35); background: var(--accent-dim); }
+.built-by b { color: var(--text); font-weight: 700; letter-spacing: 1.5px; }
+.built-by:hover b { color: var(--accent); }
 </style>
 </head>
 <body>
@@ -242,7 +246,10 @@ footer strong { color: var(--accent); }
   </div>
 </main>
 
-<footer><strong>GBB</strong> &mdash; Goose Bay Basketball League 2026 &mdash; Goose Bay, Labrador, NL</footer>
+<footer>
+  <div><strong>GBB</strong> &mdash; Goose Bay Basketball League 2026 &mdash; Goose Bay, Labrador, NL</div>
+  <a class="built-by" href="https://www.thewebguys.ca/custom-ai-solutions" target="_blank" rel="noopener">Built by <b>The Web Guys</b> &middot; Custom AI Solutions</a>
+</footer>
 <div id="toast"></div>
 
 <script>
