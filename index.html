@@ -87,7 +87,27 @@ main { max-width: 960px; margin: 0 auto; padding: 36px 28px 80px; }
 .week-section { margin-bottom: 36px; }
 .week-label { font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--accent); margin-bottom: 14px; display: flex; align-items: center; gap: 14px; }
 .week-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-.game-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 22px 28px; margin-bottom: 10px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 20px; }
+.game-card-wrap { margin-bottom: 10px; }
+.game-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 22px 28px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 20px; position: relative; transition: border-color 0.2s, background 0.2s; }
+.game-card.is-clickable { cursor: pointer; padding-bottom: 34px; }
+.game-card.is-clickable:hover { border-color: rgba(232,184,75,0.35); background: #1d1d2a; }
+.game-card.expanded { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom-color: transparent; background: #1d1d2a; }
+.expand-hint { position: absolute; left: 0; right: 0; bottom: 9px; display: flex; align-items: center; justify-content: center; gap: 5px; font-family: 'Barlow Condensed', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); pointer-events: none; }
+.expand-hint .chevron { transition: transform 0.2s; display: inline-block; }
+.game-card.expanded .expand-hint .chevron { transform: rotate(180deg); }
+.game-card.is-clickable:hover .expand-hint { color: var(--accent); }
+.game-details { background: #1d1d2a; border: 1px solid var(--border); border-top: none; border-bottom-left-radius: 14px; border-bottom-right-radius: 14px; padding: 4px 28px 22px; }
+.game-details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+.scorer-col-title { font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; padding-bottom: 10px; margin-bottom: 8px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+.scorer-row { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 13px; }
+.scorer-row:last-child { border-bottom: none; }
+.scorer-name { color: var(--text); }
+.scorer-pts { font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 16px; color: var(--accent); }
+.scorer-empty { font-size: 12px; color: var(--muted); font-style: italic; padding: 7px 0; }
+@media (max-width: 520px) {
+  .game-details { padding: 4px 18px 18px; }
+  .game-details-grid { grid-template-columns: 1fr; gap: 18px; }
+}
 .game-team { display: flex; flex-direction: column; gap: 6px; }
 .game-team.right { align-items: flex-end; }
 .game-team-name { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 800; text-transform: uppercase; }
@@ -675,28 +695,48 @@ function buildStandings() {
 // ═══════════════════════════════════════════════════════════════
 function buildScores() {
   let h = '';
-  weeksData.forEach(w => {
+  weeksData.forEach((w, wIdx) => {
     if (!w.games.length) return;
     h += `<div class="week-section"><div class="week-label">${w.label}</div>`;
-    w.games.forEach(g => {
+    w.games.forEach((g, gIdx) => {
       const has = g.homeScore !== null && g.awayScore !== null;
       const hw = has ? g.homeScore > g.awayScore : !!g.homeWon;
       const hs = has ? g.homeScore : (hw ? 'W' : 'L');
       const as = has ? g.awayScore : (hw ? 'L' : 'W');
-      h += `<div class="game-card">
-        <div class="game-team">
-          <div class="team-pill" style="margin-bottom:5px;">${dot(g.home)}<span class="game-team-name" style="color:${teamColor(g.home)}">${g.home}</span></div>
-          <span class="result-badge ${hw?'badge-w':'badge-l'}">${hw?'WIN':'LOSS'}</span>
+      const id = `g-${wIdx}-${gIdx}`;
+      const homeScorers = (w.players || []).filter(p => p.team === g.home && p.pts > 0).sort((a,b) => b.pts - a.pts);
+      const awayScorers = (w.players || []).filter(p => p.team === g.away && p.pts > 0).sort((a,b) => b.pts - a.pts);
+      const hasDetails = homeScorers.length || awayScorers.length;
+      const scorerCol = (team, list) => `
+        <div class="scorer-col">
+          <div class="scorer-col-title">${dot(team)}<span style="color:${teamColor(team)}">${team}</span></div>
+          ${list.length
+            ? list.map(p => `<div class="scorer-row"><span class="scorer-name">${p.num ? `<span class="player-num">#${p.num}</span>` : ''}${p.name}</span><span class="scorer-pts">${p.pts}</span></div>`).join('')
+            : '<div class="scorer-empty">No scorer data</div>'}
+        </div>`;
+      h += `<div class="game-card-wrap">
+        <div class="game-card ${hasDetails ? 'is-clickable' : ''}" ${hasDetails ? `onclick="toggleGameDetails('${id}')"` : ''}>
+          <div class="game-team">
+            <div class="team-pill" style="margin-bottom:5px;">${dot(g.home)}<span class="game-team-name" style="color:${teamColor(g.home)}">${g.home}</span></div>
+            <span class="result-badge ${hw?'badge-w':'badge-l'}">${hw?'WIN':'LOSS'}</span>
+          </div>
+          <div class="score-center">
+            <span class="big-score" style="color:${hw?'#4ade80':'#f87171'}">${hs}</span>
+            <span class="score-dash">–</span>
+            <span class="big-score" style="color:${hw?'#f87171':'#4ade80'}">${as}</span>
+          </div>
+          <div class="game-team right">
+            <div class="team-pill" style="margin-bottom:5px;justify-content:flex-end;">${dot(g.away)}<span class="game-team-name" style="color:${teamColor(g.away)}">${g.away}</span></div>
+            <span class="result-badge ${hw?'badge-l':'badge-w'}" style="margin-left:auto;">${hw?'LOSS':'WIN'}</span>
+          </div>
+          ${hasDetails ? '<div class="expand-hint"><span>Tap for scorers</span><span class="chevron">&#9662;</span></div>' : ''}
         </div>
-        <div class="score-center">
-          <span class="big-score" style="color:${hw?'#4ade80':'#f87171'}">${hs}</span>
-          <span class="score-dash">–</span>
-          <span class="big-score" style="color:${hw?'#f87171':'#4ade80'}">${as}</span>
-        </div>
-        <div class="game-team right">
-          <div class="team-pill" style="margin-bottom:5px;justify-content:flex-end;">${dot(g.away)}<span class="game-team-name" style="color:${teamColor(g.away)}">${g.away}</span></div>
-          <span class="result-badge ${hw?'badge-l':'badge-w'}" style="margin-left:auto;">${hw?'LOSS':'WIN'}</span>
-        </div>
+        ${hasDetails ? `<div id="${id}" class="game-details" hidden>
+          <div class="game-details-grid">
+            ${scorerCol(g.home, homeScorers)}
+            ${scorerCol(g.away, awayScorers)}
+          </div>
+        </div>` : ''}
       </div>`;
     });
     h += `</div>`;
@@ -855,6 +895,16 @@ function buildTeams() {
 // RENDER ALL
 // ═══════════════════════════════════════════════════════════════
 function renderAll() { buildStandings(); buildScores(); renderStats(); buildSchedule(); buildTeams(); }
+
+window.toggleGameDetails = function(id) {
+  const panel = document.getElementById(id);
+  if (!panel) return;
+  const wrap = panel.closest('.game-card-wrap');
+  const card = wrap && wrap.querySelector('.game-card');
+  const isOpen = !panel.hasAttribute('hidden');
+  if (isOpen) { panel.setAttribute('hidden', ''); card && card.classList.remove('expanded'); }
+  else        { panel.removeAttribute('hidden');  card && card.classList.add('expanded'); }
+};
 
 // ═══════════════════════════════════════════════════════════════
 // TABS + FILTERS
