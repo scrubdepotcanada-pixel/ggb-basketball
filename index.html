@@ -608,27 +608,41 @@ function getTeamRosters() {
 // ═══════════════════════════════════════════════════════════════
 function buildStandings() {
   const rec = {};
-  Object.keys(TEAMS).forEach(t => { rec[t] = {w:0,l:0,pf:0,pa:0}; });
+  const h2h = {};  // h2h[A][B] = games A has won against B
+  Object.keys(TEAMS).forEach(t => { rec[t] = {w:0,l:0,pf:0,pa:0}; h2h[t] = {}; });
   weeksData.forEach(w => w.games.forEach(g => {
     if (!rec[g.home]) rec[g.home] = {w:0,l:0,pf:0,pa:0};
     if (!rec[g.away]) rec[g.away] = {w:0,l:0,pf:0,pa:0};
+    if (!h2h[g.home]) h2h[g.home] = {};
+    if (!h2h[g.away]) h2h[g.away] = {};
     const hasScores = g.homeScore !== null && g.awayScore !== null;
     const hw = hasScores ? g.homeScore > g.awayScore : !!g.homeWon;
-    if (hw) { rec[g.home].w++; rec[g.away].l++; }
-    else     { rec[g.away].w++; rec[g.home].l++; }
+    if (hw) {
+      rec[g.home].w++; rec[g.away].l++;
+      h2h[g.home][g.away] = (h2h[g.home][g.away] || 0) + 1;
+    } else {
+      rec[g.away].w++; rec[g.home].l++;
+      h2h[g.away][g.home] = (h2h[g.away][g.home] || 0) + 1;
+    }
     if (hasScores) {
       rec[g.home].pf += g.homeScore; rec[g.home].pa += g.awayScore;
       rec[g.away].pf += g.awayScore; rec[g.away].pa += g.homeScore;
     }
   }));
 
-  const sorted = Object.entries(rec).sort((a,b) =>
-    b[1].w - a[1].w ||
-    a[1].l - b[1].l ||
-    (b[1].pf - b[1].pa) - (a[1].pf - a[1].pa)
-  );
+  // Primary: W-L record. Tiebreakers: head-to-head, then point differential.
+  const sorted = Object.entries(rec).sort((a, b) => {
+    const [nA, rA] = a, [nB, rB] = b;
+    if (rB.w !== rA.w) return rB.w - rA.w;
+    if (rA.l !== rB.l) return rA.l - rB.l;
+    const aOverB = h2h[nA]?.[nB] || 0;
+    const bOverA = h2h[nB]?.[nA] || 0;
+    if (aOverB !== bOverA) return bOverA - aOverB;
+    return (rB.pf - rB.pa) - (rA.pf - rA.pa);
+  });
+
   let h = `<div class="table-wrap"><table class="standings-table">
-    <thead><tr><th>#</th><th>Team</th><th>W</th><th>L</th><th>GP</th><th>PF</th><th>PA</th><th>+/-</th><th>Win %</th></tr></thead><tbody>`;
+    <thead><tr><th>#</th><th>Team</th><th>GP</th><th>W</th><th>L</th><th>PF</th><th>PA</th><th>+/-</th><th>Win %</th></tr></thead><tbody>`;
   sorted.forEach(([name, r], i) => {
     const gp = r.w + r.l, pct = gp ? Math.round(r.w/gp*100) : 0;
     const diff = r.pf - r.pa;
@@ -637,9 +651,9 @@ function buildStandings() {
     h += `<tr>
       <td><span class="rank-num">${i+1}</span></td>
       <td><div class="team-pill">${dot(name)}<span style="color:${teamColor(name)}">${name}</span></div></td>
+      <td><span class="stat-muted">${gp}</span></td>
       <td><span class="stat-val">${r.w}</span></td>
       <td><span class="stat-val" style="color:var(--muted)">${r.l}</span></td>
-      <td><span class="stat-muted">${gp}</span></td>
       <td><span class="stat-val">${r.pf}</span></td>
       <td><span class="stat-val" style="color:var(--muted)">${r.pa}</span></td>
       <td><span class="stat-val" style="color:${diffColor}">${diffStr}</span></td>
