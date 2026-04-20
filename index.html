@@ -131,6 +131,13 @@ main { max-width: 960px; margin: 0 auto; padding: 36px 28px 80px; }
   .stats-table th:first-child, .stats-table td:first-child { padding-left: 14px; min-width: 130px; }
 }
 .player-num { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; color: var(--muted); font-weight: 700; margin-right: 6px; }
+.rank-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; border-radius: 999px; font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 800; background: rgba(255,255,255,0.05); color: var(--muted); margin-right: 9px; border: 1px solid transparent; }
+.rank-badge.rank-1 { background: linear-gradient(135deg, #fde047, #ca8a04); color: #0a0a0f; box-shadow: 0 0 14px rgba(250,204,21,0.35); }
+.rank-badge.rank-2 { background: linear-gradient(135deg, #e5e7eb, #9ca3af); color: #0a0a0f; box-shadow: 0 0 12px rgba(200,200,200,0.25); }
+.rank-badge.rank-3 { background: linear-gradient(135deg, #fb923c, #c2410c); color: #fff; box-shadow: 0 0 12px rgba(251,146,60,0.28); }
+.stats-table tbody tr.top-1 td:first-child { box-shadow: inset 3px 0 0 #fde047; }
+.stats-table tbody tr.top-2 td:first-child { box-shadow: inset 3px 0 0 #cbd5e1; }
+.stats-table tbody tr.top-3 td:first-child { box-shadow: inset 3px 0 0 #fb923c; }
 .dnp-tag { font-size: 10px; color: var(--muted); letter-spacing: 1px; margin-left: 8px; }
 .stat-hero { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 900; color: var(--accent); }
 .stat-num { font-family: 'Barlow Condensed', sans-serif; font-size: 17px; font-weight: 700; }
@@ -681,7 +688,14 @@ function buildScores() {
 // RENDER: PLAYER STATS
 // ═══════════════════════════════════════════════════════════════
 function renderStats() {
-  let players = getAllPlayers();
+  const all = getAllPlayers();
+  // Overall rank by points scored — stable regardless of current sort/filter
+  const rankMap = {};
+  [...all]
+    .sort((a,b) => (b.pts||0) - (a.pts||0) || a.name.localeCompare(b.name))
+    .forEach((p, i) => { rankMap[normalizePlayerName(p.name)] = i + 1; });
+
+  let players = all;
   if (activeFilter !== 'all') players = players.filter(p => p.team === activeFilter);
   const q = searchQuery.trim().toLowerCase();
   if (q) players = players.filter(p => p.name.toLowerCase().includes(q));
@@ -708,8 +722,15 @@ function renderStats() {
   h += `</tr></thead><tbody>`;
   players.forEach(p => {
     const num = p.num ? `<span class="player-num">#${p.num}</span>` : '';
-    h += `<tr>
-      <td>${num}<span>${p.name}</span></td>
+    const rank = rankMap[normalizePlayerName(p.name)] || 0;
+    const rankClass = rank === 1 ? 'rank-badge rank-1'
+                    : rank === 2 ? 'rank-badge rank-2'
+                    : rank === 3 ? 'rank-badge rank-3'
+                    : 'rank-badge';
+    const rankHtml = rank ? `<span class="${rankClass}">${rank}</span>` : '';
+    const rowClass = rank <= 3 && rank > 0 ? `top-${rank}` : '';
+    h += `<tr class="${rowClass}">
+      <td>${rankHtml}${num}<span>${p.name}</span></td>
       <td><div style="display:flex;align-items:center;gap:7px;">${dot(p.team)}<span style="font-size:12px;color:${teamColor(p.team)};font-weight:600">${p.team}</span></div></td>
       <td><span class="${sortCol==='pts'?'stat-hero':'stat-num'}">${p.pts}</span></td>
       <td><span class="stat-num">${p.fouls}</span></td>
