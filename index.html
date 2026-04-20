@@ -99,10 +99,14 @@ main { max-width: 960px; margin: 0 auto; padding: 36px 28px 80px; }
 .game-details { background: #1d1d2a; border: 1px solid var(--border); border-top: none; border-bottom-left-radius: 14px; border-bottom-right-radius: 14px; padding: 4px 28px 22px; }
 .game-details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
 .scorer-col-title { font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; padding-bottom: 10px; margin-bottom: 8px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
-.scorer-row { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 13px; }
+.scorer-col-labels { display: flex; gap: 16px; color: var(--muted); font-size: 10px; letter-spacing: 1.5px; margin-left: auto; }
+.scorer-col-labels span { width: 24px; text-align: center; }
+.scorer-row { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 13px; gap: 10px; }
 .scorer-row:last-child { border-bottom: none; }
-.scorer-name { color: var(--text); }
-.scorer-pts { font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 16px; color: var(--accent); }
+.scorer-name { color: var(--text); flex: 1; min-width: 0; }
+.scorer-stats { display: flex; align-items: baseline; gap: 16px; flex-shrink: 0; }
+.scorer-foul { width: 24px; text-align: center; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 14px; color: var(--muted); }
+.scorer-pts { width: 24px; text-align: center; font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 16px; color: var(--accent); }
 .scorer-empty { font-size: 12px; color: var(--muted); font-style: italic; padding: 7px 0; }
 @media (max-width: 520px) {
   .game-details { padding: 4px 18px 18px; }
@@ -709,9 +713,12 @@ function buildScores() {
       const hasDetails = homeScorers.length || awayScorers.length;
       const scorerCol = (team, list) => `
         <div class="scorer-col">
-          <div class="scorer-col-title">${dot(team)}<span style="color:${teamColor(team)}">${team}</span></div>
+          <div class="scorer-col-title">
+            <span style="display:flex;align-items:center;gap:8px;flex:1;">${dot(team)}<span style="color:${teamColor(team)}">${team}</span></span>
+            <span class="scorer-col-labels"><span>F</span><span>PTS</span></span>
+          </div>
           ${list.length
-            ? list.map(p => `<div class="scorer-row"><span class="scorer-name">${p.num ? `<span class="player-num">#${p.num}</span>` : ''}${p.name}</span><span class="scorer-pts">${p.pts}</span></div>`).join('')
+            ? list.map(p => `<div class="scorer-row"><span class="scorer-name">${p.num ? `<span class="player-num">#${p.num}</span>` : ''}${p.name}</span><span class="scorer-stats"><span class="scorer-foul">${p.fouls || 0}</span><span class="scorer-pts">${p.pts}</span></span></div>`).join('')
             : '<div class="scorer-empty">No scorer data</div>'}
         </div>`;
       h += `<div class="game-card-wrap">
