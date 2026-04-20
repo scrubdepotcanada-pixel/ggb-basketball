@@ -61,16 +61,20 @@ main { max-width: 960px; margin: 0 auto; padding: 36px 28px 80px; }
 .loading-state { padding: 48px; text-align: center; color: var(--muted); font-size: 14px; }
 .spinner { width: 28px; height: 28px; border: 2px solid rgba(232,184,75,0.2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 14px; }
 
-.table-wrap { border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
-.standings-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.table-wrap { border: 1px solid var(--border); border-radius: 14px; overflow-x: auto; }
+.standings-table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 620px; }
 .standings-table thead tr { border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02); }
-.standings-table th { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); padding: 12px 16px; text-align: center; }
+.standings-table th { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); padding: 12px 14px; text-align: center; white-space: nowrap; }
 .standings-table th:nth-child(2) { text-align: left; }
 .standings-table tbody tr { border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.15s; }
 .standings-table tbody tr:last-child { border-bottom: none; }
 .standings-table tbody tr:hover { background: rgba(255,255,255,0.025); }
-.standings-table td { padding: 16px; text-align: center; }
+.standings-table td { padding: 15px 14px; text-align: center; white-space: nowrap; }
 .standings-table td:nth-child(2) { text-align: left; }
+@media (max-width: 640px) {
+  .standings-table { min-width: 560px; font-size: 13px; }
+  .standings-table th, .standings-table td { padding: 11px 9px; }
+}
 .rank-num { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 700; color: var(--muted); }
 .team-pill { display: inline-flex; align-items: center; gap: 9px; font-weight: 600; font-size: 15px; }
 .team-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
@@ -590,26 +594,41 @@ function getTeamRosters() {
 // ═══════════════════════════════════════════════════════════════
 function buildStandings() {
   const rec = {};
-  Object.keys(TEAMS).forEach(t => { rec[t] = {w:0,l:0}; });
+  Object.keys(TEAMS).forEach(t => { rec[t] = {w:0,l:0,pf:0,pa:0}; });
   weeksData.forEach(w => w.games.forEach(g => {
-    if (!rec[g.home]) rec[g.home] = {w:0,l:0};
-    if (!rec[g.away]) rec[g.away] = {w:0,l:0};
-    const hw = g.homeScore !== null ? g.homeScore > g.awayScore : !!g.homeWon;
+    if (!rec[g.home]) rec[g.home] = {w:0,l:0,pf:0,pa:0};
+    if (!rec[g.away]) rec[g.away] = {w:0,l:0,pf:0,pa:0};
+    const hasScores = g.homeScore !== null && g.awayScore !== null;
+    const hw = hasScores ? g.homeScore > g.awayScore : !!g.homeWon;
     if (hw) { rec[g.home].w++; rec[g.away].l++; }
     else     { rec[g.away].w++; rec[g.home].l++; }
+    if (hasScores) {
+      rec[g.home].pf += g.homeScore; rec[g.home].pa += g.awayScore;
+      rec[g.away].pf += g.awayScore; rec[g.away].pa += g.homeScore;
+    }
   }));
 
-  const sorted = Object.entries(rec).sort((a,b) => b[1].w - a[1].w || a[1].l - b[1].l);
+  const sorted = Object.entries(rec).sort((a,b) =>
+    b[1].w - a[1].w ||
+    a[1].l - b[1].l ||
+    (b[1].pf - b[1].pa) - (a[1].pf - a[1].pa)
+  );
   let h = `<div class="table-wrap"><table class="standings-table">
-    <thead><tr><th>#</th><th>Team</th><th>W</th><th>L</th><th>GP</th><th>Win %</th></tr></thead><tbody>`;
+    <thead><tr><th>#</th><th>Team</th><th>W</th><th>L</th><th>GP</th><th>PF</th><th>PA</th><th>+/-</th><th>Win %</th></tr></thead><tbody>`;
   sorted.forEach(([name, r], i) => {
     const gp = r.w + r.l, pct = gp ? Math.round(r.w/gp*100) : 0;
+    const diff = r.pf - r.pa;
+    const diffColor = diff > 0 ? '#4ade80' : diff < 0 ? '#f87171' : 'var(--muted)';
+    const diffStr = diff > 0 ? `+${diff}` : `${diff}`;
     h += `<tr>
       <td><span class="rank-num">${i+1}</span></td>
       <td><div class="team-pill">${dot(name)}<span style="color:${teamColor(name)}">${name}</span></div></td>
       <td><span class="stat-val">${r.w}</span></td>
       <td><span class="stat-val" style="color:var(--muted)">${r.l}</span></td>
       <td><span class="stat-muted">${gp}</span></td>
+      <td><span class="stat-val">${r.pf}</span></td>
+      <td><span class="stat-val" style="color:var(--muted)">${r.pa}</span></td>
+      <td><span class="stat-val" style="color:${diffColor}">${diffStr}</span></td>
       <td><div class="pct-wrap"><div class="pct-bar-bg"><div class="pct-bar" style="width:${pct}%"></div></div>
         <span class="stat-muted">${pct}%</span></div></td>
     </tr>`;
