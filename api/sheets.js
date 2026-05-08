@@ -18,9 +18,14 @@ const FALLBACK_WEEKS = [
   { name: 'Week 4', weekNumber: 4, gid: '1644843033', date: { day:  4, month: 'Apr' } },
   { name: 'Week 5', weekNumber: 5, gid: '1402349068', date: { day: 11, month: 'Apr' } },
   { name: 'Week 6', weekNumber: 6, gid: '267429677',  date: { day: 18, month: 'Apr' } },
-  { name: 'Week 7', weekNumber: 7, gid: '1514677737', date: { day: 25, month: 'Apr' } },
   { name: 'Week 8', weekNumber: 8, gid: '988222761',  date: { day:  2, month: 'May' } },
 ];
+
+// Tabs to exclude from auto-discovery (e.g. exhibition / fun games that
+// shouldn't count toward standings or stats). Keyed by GID.
+const EXCLUDED_GIDS = new Set([
+  '1514677737', // Week 7 — All Star Weekend exhibition
+]);
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -103,9 +108,9 @@ export default async function handler(req, res) {
     }
   }
 
-  // Filter to week tabs
+  // Filter to week tabs (skipping excluded GIDs like exhibition games)
   const weekTabs = tabs
-    .filter(t => /week\s*\d+/i.test(t.name))
+    .filter(t => /week\s*\d+/i.test(t.name) && !EXCLUDED_GIDS.has(t.gid))
     .map(t => {
       const weekNum = parseInt(t.name.match(/week\s*(\d+)/i)?.[1] || '0');
       const dateMatch = t.name.match(/(\w+)\s+(\d+)(?:st|nd|rd|th)/i);
