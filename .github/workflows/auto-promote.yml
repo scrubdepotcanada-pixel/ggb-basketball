@@ -1,0 +1,53 @@
+name: Auto-promote to main
+
+# Every push to the dev branch is fast-forwarded onto main so Vercel
+# rebuilds production automatically. This way commits go straight to
+# https://ggb.thewebguys.ca with no manual "Promote to Production"
+# click in the Vercel dashboard.
+
+on:
+  push:
+    branches:
+      - claude/setup-ggb-website-mxm6A
+
+concurrency:
+  group: promote-main
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Merge dev branch into main
+        env:
+          DEV_BRANCH: claude/setup-ggb-website-mxm6A
+        run: |
+          set -euo pipefail
+          git config user.name  "auto-promote-bot"
+          git config user.email "auto-promote@users.noreply.github.com"
+          git fetch origin "$DEV_BRANCH"
+          DEV_SHA=$(git rev-parse "origin/$DEV_BRANCH")
+          DEV_MSG=$(git log -1 --pretty=%s "origin/$DEV_BRANCH")
+
+          # If main is already at or ahead of the dev branch, nothing to do.
+          if git merge-base --is-ancestor "$DEV_SHA" HEAD; then
+            echo "main already contains $DEV_SHA — nothing to promote."
+            exit 0
+          fi
+
+          # Prefer dev-branch content on any (rare) conflict; dev is the
+          # source of truth for this repo.
+          git merge --no-edit -X theirs \
+            -m "auto-promote: $DEV_MSG" \
+            "origin/$DEV_BRANCH"
+
+          git push origin main

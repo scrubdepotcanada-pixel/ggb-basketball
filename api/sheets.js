@@ -17,6 +17,9 @@ const FALLBACK_WEEKS = [
   { name: 'Week 3', weekNumber: 3, gid: '587090763',  date: { day: 28, month: 'Mar' } },
   { name: 'Week 4', weekNumber: 4, gid: '1644843033', date: { day:  4, month: 'Apr' } },
   { name: 'Week 5', weekNumber: 5, gid: '1402349068', date: { day: 11, month: 'Apr' } },
+  { name: 'Week 6', weekNumber: 6, gid: '267429677',  date: { day: 18, month: 'Apr' } },
+  { name: 'Week 7', weekNumber: 7, gid: '1514677737', date: { day: 25, month: 'Apr' } },
+  { name: 'Week 8', weekNumber: 8, gid: '988222761',  date: { day:  2, month: 'May' } },
 ];
 
 export default async function handler(req, res) {
@@ -45,7 +48,7 @@ export default async function handler(req, res) {
       }
 
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-      res.setHeader('Cache-Control', 's-maxage=120, stale-while-revalidate=30');
+      res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=30, stale-while-revalidate=30');
       return res.status(200).send(csvText);
     } catch (e) {
       return res.status(500).json({ success: false, error: e.message });
@@ -53,57 +56,50 @@ export default async function handler(req, res) {
   }
 
   // ─── Mode 1: Discover all week tabs ───
+  // The sheets.googleapis.com v4 API requires an API key for public calls,
+  // so we rely on the published pubhtml URL (same base as the CSV fetches).
+  // The HTML embeds each tab as: items.push({name: "...", pageUrl: "...", gid: "...", ...})
   let tabs = [];
   let source = 'unknown';
 
-  // Strategy A: Google Sheets API v4
-  try {
-    const apiUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}?fields=sheets(properties(sheetId,title))`;
-    const apiResp = await fetch(apiUrl);
+  const pubUrls = [
+    `${PUB_BASE}/pubhtml`,
+    `https://docs.google.com/spreadsheets/d/${SHEET_ID}/pubhtml`,
+  ];
 
-    if (apiResp.ok) {
-      const data = await apiResp.json();
-      if (data.sheets && data.sheets.length > 0) {
-        tabs = data.sheets.map(s => ({
-          name: s.properties.title,
-          gid: String(s.properties.sheetId),
-        }));
-        source = 'sheets-api';
-      }
-    }
-  } catch (e) {
-    console.error('Sheets API failed:', e.message);
-  }
-
-  // Strategy B: Try fetching the published HTML page for tab info
-  if (tabs.length === 0) {
+  for (const pubUrl of pubUrls) {
     try {
-      const pubUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/pubhtml`;
       const pubResp = await fetch(pubUrl, {
         headers: { 'User-Agent': 'Mozilla/5.0 (compatible)' },
         redirect: 'follow',
       });
+      if (!pubResp.ok) continue;
       const html = await pubResp.text();
 
+      // Primary: items.push({name: "...", ..., gid: "..."}) — name & gid may
+      // have other props between them (pageUrl, etc.), so use a non-greedy
+      // gap. Fall back to legacy patterns if the structure ever changes.
       const patterns = [
-        /id="sheet-button-(\d+)"[\s\S]*?<a[^>]*>([^<]+)<\/a>/g,
-        /data-name="([^"]+)"[^>]*data-gid="(\d+)"/g,
+        { re: /items\.push\(\{name:\s*"([^"]+)"[^}]*?gid:\s*"(\d+)"/g, nameFirst: true },
+        { re: /data-name="([^"]+)"[^>]*data-gid="(\d+)"/g,             nameFirst: true },
+        { re: /id="sheet-button-(\d+)"[\s\S]*?<a[^>]*>([^<]+)<\/a>/g,  nameFirst: false },
       ];
 
-      for (const regex of patterns) {
+      for (const { re, nameFirst } of patterns) {
         let m;
-        while ((m = regex.exec(html)) !== null) {
-          const isNameFirst = regex.source.startsWith('data-name');
-          const gid = isNameFirst ? m[2] : m[1];
-          const name = (isNameFirst ? m[1] : m[2]).trim();
-          if (name && !tabs.some(t => t.gid === gid)) {
+        while ((m = re.exec(html)) !== null) {
+          const name = (nameFirst ? m[1] : m[2]).trim();
+          const gid  = nameFirst ? m[2] : m[1];
+          if (name && gid && !tabs.some(t => t.gid === gid)) {
             tabs.push({ name, gid });
           }
         }
-        if (tabs.length > 0) { source = 'pubhtml'; break; }
+        if (tabs.length > 0) break;
       }
+
+      if (tabs.length > 0) { source = 'pubhtml'; break; }
     } catch (e) {
-      console.error('pubhtml failed:', e.message);
+      console.error('pubhtml fetch failed for', pubUrl, e.message);
     }
   }
 
@@ -130,7 +126,9 @@ export default async function handler(req, res) {
   });
 
   if (deduped.length > 0) {
-    res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=60');
+    // Short TTL so a freshly-added week tab is picked up on the next
+    // Refresh Stats click rather than waiting on the edge cache.
+    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=30, stale-while-revalidate=30');
     return res.status(200).json({
       success: true,
       source,
