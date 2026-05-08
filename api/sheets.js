@@ -18,6 +18,8 @@ const FALLBACK_WEEKS = [
   { name: 'Week 4', weekNumber: 4, gid: '1644843033', date: { day:  4, month: 'Apr' } },
   { name: 'Week 5', weekNumber: 5, gid: '1402349068', date: { day: 11, month: 'Apr' } },
   { name: 'Week 6', weekNumber: 6, gid: '267429677',  date: { day: 18, month: 'Apr' } },
+  { name: 'Week 7', weekNumber: 7, gid: '1514677737', date: { day: 25, month: 'Apr' } },
+  { name: 'Week 8', weekNumber: 8, gid: '988222761',  date: { day:  2, month: 'May' } },
 ];
 
 export default async function handler(req, res) {
@@ -56,7 +58,7 @@ export default async function handler(req, res) {
   // ─── Mode 1: Discover all week tabs ───
   // The sheets.googleapis.com v4 API requires an API key for public calls,
   // so we rely on the published pubhtml URL (same base as the CSV fetches).
-  // The HTML embeds each tab as a JS literal: name: "...", gid: "..."
+  // The HTML embeds each tab as: items.push({name: "...", pageUrl: "...", gid: "...", ...})
   let tabs = [];
   let source = 'unknown';
 
@@ -74,16 +76,18 @@ export default async function handler(req, res) {
       if (!pubResp.ok) continue;
       const html = await pubResp.text();
 
+      // Primary: items.push({name: "...", ..., gid: "..."}) — name & gid may
+      // have other props between them (pageUrl, etc.), so use a non-greedy
+      // gap. Fall back to legacy patterns if the structure ever changes.
       const patterns = [
-        /name:\s*"([^"]+)"\s*,\s*gid:\s*"(\d+)"/g,
-        /id="sheet-button-(\d+)"[\s\S]*?<a[^>]*>([^<]+)<\/a>/g,
-        /data-name="([^"]+)"[^>]*data-gid="(\d+)"/g,
+        { re: /items\.push\(\{name:\s*"([^"]+)"[^}]*?gid:\s*"(\d+)"/g, nameFirst: true },
+        { re: /data-name="([^"]+)"[^>]*data-gid="(\d+)"/g,             nameFirst: true },
+        { re: /id="sheet-button-(\d+)"[\s\S]*?<a[^>]*>([^<]+)<\/a>/g,  nameFirst: false },
       ];
 
-      for (const regex of patterns) {
+      for (const { re, nameFirst } of patterns) {
         let m;
-        while ((m = regex.exec(html)) !== null) {
-          const nameFirst = regex.source.startsWith('name:') || regex.source.startsWith('data-name');
+        while ((m = re.exec(html)) !== null) {
           const name = (nameFirst ? m[1] : m[2]).trim();
           const gid  = nameFirst ? m[2] : m[1];
           if (name && gid && !tabs.some(t => t.gid === gid)) {
