@@ -48,7 +48,7 @@ export default async function handler(req, res) {
       }
 
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-      res.setHeader('Cache-Control', 's-maxage=120, stale-while-revalidate=30');
+      res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=30, stale-while-revalidate=30');
       return res.status(200).send(csvText);
     } catch (e) {
       return res.status(500).json({ success: false, error: e.message });
@@ -126,7 +126,9 @@ export default async function handler(req, res) {
   });
 
   if (deduped.length > 0) {
-    res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=60');
+    // Short TTL so a freshly-added week tab is picked up on the next
+    // Refresh Stats click rather than waiting on the edge cache.
+    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=30, stale-while-revalidate=30');
     return res.status(200).json({
       success: true,
       source,
