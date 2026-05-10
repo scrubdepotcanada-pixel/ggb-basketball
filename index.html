@@ -457,11 +457,18 @@ function parseWeekRows(rows, weekMeta) {
 function parseGamesFromHeadline(headline) {
   const games = [];
   const parts = headline.split(/\band\b/i);
+  // "Default", "Forfeit", "DEF" all mean that team didn't play and lost.
+  const LOSS_WORDS = /^(?:L|Default|Forfeit|DEF)$/i;
+  const WIN_WORDS  = /^W$/i;
+  const RESULT_RE  = /([A-Za-z ]+?)\s+(W|L|Default|Forfeit|DEF)\s+vs\.?\s+([A-Za-z ]+?)\s+(W|L|Default|Forfeit|DEF)\b/i;
   for (const part of parts) {
     const sM = part.match(/([A-Za-z ]+?)\s+(\d+)\s+vs\.?\s+([A-Za-z ]+?)\s+(\d+)/i);
     if (sM) { games.push({ home:sM[1].trim(), homeScore:+sM[2], away:sM[3].trim(), awayScore:+sM[4] }); continue; }
-    const wM = part.match(/([A-Za-z ]+?)\s+(W|L)\s+vs\.?\s+([A-Za-z ]+?)\s+(W|L)/i);
-    if (wM) games.push({ home:wM[1].trim(), homeScore:null, away:wM[3].trim(), awayScore:null, homeWon: wM[2].toUpperCase()==='W' });
+    const wM = part.match(RESULT_RE);
+    if (wM) {
+      const homeWon = WIN_WORDS.test(wM[2]) || LOSS_WORDS.test(wM[4]);
+      games.push({ home:wM[1].trim(), homeScore:null, away:wM[3].trim(), awayScore:null, homeWon });
+    }
   }
   return games;
 }
